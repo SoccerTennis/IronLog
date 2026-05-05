@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="IronLog">
+<title>IronLog</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0f;color:#e8e8e8;font-family:-apple-system,sans-serif;min-height:100vh;display:flex;flex-direction:column;overscroll-behavior:none}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#ff3c00;border-radius:2px}
+input,select,textarea{background:#0f0f18;border:1px solid #222;border-radius:7px;color:#e8e8e8;padding:8px 10px;font-size:13px;width:100%;font-family:-apple-system,sans-serif;outline:none}
+input:focus,select:focus,textarea:focus{border-color:#ff3c00}
+button{font-family:-apple-system,sans-serif;cursor:pointer}
+.card{background:#13131f;border:1px solid #1e1e2e;border-radius:9px;padding:12px 13px;margin-bottom:8px}
+.chip{padding:4px 8px;border-radius:20px;font-size:9px;font-weight:700;text-transform:uppercase;border:1px solid #1e1e2e;background:#1a1a28;color:#555;margin-right:4px;margin-bottom:4px;cursor:pointer}
+.chip.on{background:#ff3c00;color:#fff;border-color:#ff3c00}
+.ex{display:block;width:100%;text-align:left;padding:8px 11px;border-radius:6px;font-size:12px;font-weight:600;color:#e8e8e8;margin-bottom:3px;background:#0f0f18;border:1px solid #1a1a2a;cursor:pointer}
+.ex:hover,.ex.sel{border-color:#ff3c00;background:#1a0800}
+.ex.sel{color:#ff3c00}
+.tag{background:#0f0f18;border:1px solid #222;border-radius:4px;padding:2px 6px;font-size:10px;margin-right:3px;display:inline-block;margin-bottom:3px}
+.lbl{font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;display:block}
+.h1{font-size:15px;letter-spacing:2px;text-transform:uppercase;color:#ff3c00;font-weight:800;display:block;margin-bottom:10px}
+.saved{background:#00221a;border:1px solid #00c853;border-radius:6px;padding:8px;margin-bottom:8px;color:#00c853;font-weight:700;font-size:12px}
+.pbtn{padding:11px;background:#ff3c00;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:800;letter-spacing:1px;text-transform:uppercase;width:100%}
+.pbtn:disabled{background:#1a1a1a;color:#555;cursor:not-allowed}
+.pbtn.sm{width:auto;padding:7px 10px;font-size:11px}
+.tabs{display:flex;overflow-x:auto;background:#111118;border-bottom:1px solid #1e1e2e;flex-shrink:0;-webkit-overflow-scrolling:touch}
+.tabs button{padding:9px 10px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:transparent;color:#555;border:none;flex-shrink:0}
+.tabs button.on{background:#ff3c00;color:#fff}
+.content{flex:1;padding:12px 10px;max-width:600px;width:100%;margin:0 auto;overflow-y:auto;-webkit-overflow-scrolling:touch}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.fi{animation:fi .2s ease forwards}
+.bar{height:5px;background:#1a1a1a;border-radius:4px;overflow:hidden;margin-bottom:8px}
+.bar-fill{height:100%;border-radius:4px;background:#ff3c00;transition:width .4s}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:11px}
+.sets-grid{display:grid;grid-template-columns:18px 1fr 1fr 56px 18px;gap:4px;align-items:center;margin-bottom:4px}
+#pr-banner{position:fixed;top:0;left:0;right:0;z-index:1000;background:#ff3c00;padding:12px;text-align:center;display:none;font-size:14px;font-weight:800;color:#fff;letter-spacing:2px}
+</style>
+</head>
+<body>
+<div id="pr-banner"></div>
+<div style="background:#0f0f18;border-bottom:2px solid #ff3c00;padding:10px 14px;display:flex;align-items:center;flex-shrink:0">
+  <b style="font-size:18px;letter-spacing:3px;color:#ff3c00">⚔ IRONLOG</b>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+    <b id="streak-badge" style="font-size:12px;color:#ff3c00;display:none"></b>
+    <span id="date-lbl" style="font-size:10px;color:#555"></span>
+  </div>
+</div>
+<div class="tabs" id="tabs"></div>
+<div class="content" id="content"></div>
+
+<script>
+const MG=["Chest","Back","Shoulders","Biceps","Triceps","Core","Quads","Hamstrings","Glutes","Calves","Full Body"];
+const EX={
+  Chest:["Bench Press","Incline Press","Push-Up","Dips","Cable Fly","Pec Deck"],
+  Back:["Deadlift","Pull-Up","Barbell Row","Lat Pulldown","Cable Row","Face Pull"],
+  Shoulders:["Overhead Press","Lateral Raise","Front Raise","Rear Delt Fly","Shrugs"],
+  Biceps:["Barbell Curl","Dumbbell Curl","Hammer Curl","Cable Curl","Preacher Curl"],
+  Triceps:["Pushdown","Skull Crusher","Close Grip Bench","Overhead Extension","Dips"],
+  Core:["Plank","Hanging Leg Raise","Ab Wheel","Cable Crunch","Russian Twist"],
+  Quads:["Back Squat","Leg Press","Lunge","Leg Extension","Goblet Squat"],
+  Hamstrings:["Romanian Deadlift","Leg Curl","Nordic Curl","Good Morning"],
+  Glutes:["Hip Thrust","Glute Bridge","Cable Kickback","Clamshell"],
+  Calves:["Standing Calf Raise","Seated Calf Raise"],
+  "Full Body":["Kettlebell Swing","Burpee","Thruster","Farmer Carry","Battle Ropes"]
+};
+const TABS=["Dashboard","Log","History","PRs","Cardio","Protein","Progress"];
+const SK="il9";
+const O="#ff3c00";
+const fd=d=>new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+const ft=d=>new Date(d).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
+const tk=()=>new Date().toISOString().split("T")[0];
+
+let D={wos:[],prs:{},pr:{},bw:{},rd:[],cx:{},cl:[],ht:"",hu:"ft",pg:"150"};
+let tab="Dashboard";
+let lM="Chest",lE="",lSets=[{r:"",w:"",u:"lbs"}];
+let logMs="",logEs="",cxName="",showCx=false;
+let cType="Running",cDist="",cDu="mi",cH="",cM="",cS="",cCourse="",cDate=tk();
+let hf="all",hs="";
+
+try{const r=localStorage.getItem(SK);if(r)D={...D,...JSON.parse(r)};}catch(e){}
+
+let saveTimer=null;
+function save(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{try{localStorage.setItem(SK,JSON.stringify(D));}catch(e){}},400);}
+
+function calcStreak(){
+  let s=0;const d=new Date();
+  for(let i=0;i<365;i++){
+    const k=d.toISOString().split("T")[0];
+    const hasA=D.wos.some(w=>new Date(w.date).toDateString()===d.toDateString())||D.cl.some(c=>c.date===k)||D.rd.includes(k);
+    if(hasA){s++;d.setDate(d.getDate()-1);}else break;
+  }
+  return s;
+}
+
+function showPR(ex){const b=document.getElementById("pr-banner");b.textContent="🏆 NEW PR! "+ex;b.style.display="block";setTimeout(()=>b.style.display="none",3500);}
+function aE(m){return[...(EX[m]||[]),...(D.cx[m]||[])];}
+
+document.getElementById("date-lbl").textContent=new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+
+function renderTabs(){
+  document.getElementById("tabs").innerHTML=TABS.map(t=>`<button class="${tab===t?'on':''}" onclick="setTab('${t}')">${t}</button>`).join("");
+}
+
+function setTab(t){tab=t;renderTabs();renderContent();}
+
+function renderContent(){
+  const el=document.getElementById("content");
+  el.className="content fi";
+  void el.offsetWidth;
+  if(tab==="Dashboard")renderDash(el);
+  else if(tab==="Log")renderLog(el);
+  else if(tab==="History")renderHistory(el);
+  else if(tab==="PRs")renderPRs(el);
+  else if(tab==="Cardio")renderCardio(el);
+  else if(tab==="Protein")renderProtein(el);
+  else if(tab==="Progress")renderProgress(el);
+  const str=calcStreak();
+  const sb=document.getElementById("streak-badge");
+  if(str>0){sb.textContent="🔥"+str;sb.style.display="block";}else sb.style.display="none";
+}
+
+function renderDash(el){
+  const tw=D.wos.filter(w=>(new Date()-new Date(w.date))/864e5<7).length;
+  const tv=D.wos.reduce((a,w)=>a+w.sets.reduce((b,s)=>b+(parseFloat(s.w)||0)*(parseFloat(s.r)||0),0),0);
+  const str=calcStreak();
+  const l7=Array.from({length:7},(_,i)=>{
+    const d=new Date();d.setDate(d.getDate()-(6-i));
+    const ds=d.toDateString();const k=d.toISOString().split("T")[0];
+    return{lb:d.toLocaleDateString("en-US",{weekday:"short"}),ct:D.wos.filter(w=>new Date(w.date).toDateString()===ds).length+D.cl.filter(c=>c.date===k).length,k};
+  });
+  const mb=Math.max(...l7.map(d=>d.ct),1);
+  const mc={};D.wos.forEach(w=>{mc[w.muscle]=(mc[w.muscle]||0)+1;});
+  const tm=Object.entries(mc).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const all=[...D.wos.map(w=>({...w,_t:"wo"})),...D.cl.map(c=>({...c,_t:"c"}))].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5);
+
+  el.innerHTML=`
+  <b class="h1">Your Stats</b>
+  <div class="grid4">
+    ${[{l:"Total",v:D.wos.length,i:"🏋️"},{l:"Week",v:tw,i:"📅"},{l:"Streak",v:str+"d",i:"🔥"},{l:"Volume",v:tv>0?(tv/1000).toFixed(1)+"k":"0",i:"📊"}].map(s=>`
+    <div class="card" style="padding:8px 4px;text-align:center;margin-bottom:0">
+      <div style="font-size:13px">${s.i}</div>
+      <b style="font-size:14px;color:${O};display:block">${s.v}</b>
+      <div style="font-size:8px;color:#555;text-transform:uppercase">${s.l}</div>
+    </div>`).join("")}
+  </div>
+  <div class="card" style="margin-bottom:11px">
+    <div class="lbl">Last 7 Days</div>
+    <div style="display:flex;align-items:flex-end;gap:3px;height:44px">
+      ${l7.map(d=>`
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+        <div style="width:100%;border-radius:3px;background:${d.ct>0?O:D.rd.includes(d.k)?"rgba(0,200,83,0.2)":"#1a1a1a"};height:${d.ct===0?3:Math.round((d.ct/mb)*40)}px;transition:height .4s"></div>
+        <div style="font-size:7px;color:#555;text-transform:uppercase">${d.lb}</div>
+      </div>`).join("")}
+    </div>
+  </div>
+  ${tm.length?`<div class="card" style="margin-bottom:11px">
+    <div class="lbl">Most Trained</div>
+    ${tm.map(([m,ct])=>`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <b style="font-size:12px">${m}</b>
+      <div style="display:flex;align-items:center;gap:7px">
+        <div style="height:4px;border-radius:3px;background:${O};width:${Math.min((ct/D.wos.length)*110,100)}px"></div>
+        <span style="font-size:10px;color:#555">${ct}x</span>
+      </div>
+    </div>`).join("")}
+  </div>`:""}
+  <div class="lbl">Recent Activity</div>
+  ${!all.length?`<div style="color:#555;text-align:center;padding:20px 0;font-size:12px">No activity yet — tap Log 💪</div>`
+  :all.map(a=>a._t==="wo"?`
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+    <div><b style="font-size:12px">${a.exercise}</b><div style="font-size:10px;color:#555">${a.muscle} · ${fd(a.date)}</div></div>
+    <button onclick="relogWo('${a.id}')" style="background:none;border:1px solid rgba(255,60,0,0.3);border-radius:5px;color:${O};font-size:9px;padding:2px 6px;font-weight:700">↩Relog</button>
+  </div>`:`
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+    <div><b style="font-size:12px">🏃 ${a.type}</b><div style="font-size:10px;color:#555">${a.dist?a.dist+a.du+" · ":""}${fd(new Date(a.date+"T12:00:00").toISOString())}</div></div>
+    <span style="font-size:8px;background:rgba(255,60,0,0.1);color:${O};padding:2px 6px;border-radius:4px;text-transform:uppercase">Cardio</span>
+  </div>`).join("")}`;
+}
+
+function renderLog(el){
+  const fMG=MG.filter(m=>m.toLowerCase().includes(logMs.toLowerCase()));
+  const fEX=aE(lM).filter(e=>e.toLowerCase().includes(logEs.toLowerCase()));
+  el.innerHTML=`
+  <b class="h1">Log Workout</b>
+  <div class="lbl">Muscle Group</div>
+  <input value="${logMs}" oninput="logMs=this.value;renderContent()" placeholder="Search..." style="margin-bottom:8px">
+  <div style="margin-bottom:10px">${fMG.map(m=>`<button class="chip${lM===m?' on':''}" onclick="lM='${m}';lE='';logEs='';renderContent()">${m}</button>`).join("")}</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+    <span class="lbl" style="margin-bottom:0">Exercise (${fEX.length})</span>
+    <button onclick="showCx=!showCx;renderContent()" style="background:none;border:1px solid rgba(255,60,0,0.3);border-radius:5px;color:${O};font-size:9px;padding:2px 6px;font-weight:700">+ Custom</button>
+  </div>
+  ${showCx?`<div style="display:flex;gap:5px;margin-bottom:7px">
+    <input id="cxinput" value="${cxName}" oninput="cxName=this.value" placeholder="Exercise name..." style="flex:1;margin-bottom:0">
+    <button onclick="addCx()" style="padding:7px 10px;background:${O};color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:700">Add</button>
+    <button onclick="showCx=false;renderContent()" style="background:none;border:none;color:#555;font-size:14px">✕</button>
+  </div>`:""}
+  <input value="${logEs}" oninput="logEs=this.value;renderContent()" placeholder="Search ${lM}..." style="margin-bottom:8px">
+  <div style="max-height:150px;overflow-y:auto;margin-bottom:9px">${fEX.map(e=>`<button class="ex${lE===e?' sel':''}" onclick="lE='${e.replace(/'/g,"\\'")}';renderContent()">${e}</button>`).join("")}</div>
+  ${lE?`
+  <div style="background:rgba(255,60,0,0.05);border:1px solid rgba(255,60,0,0.2);border-radius:6px;padding:7px 11px;margin-bottom:9px;font-size:12px;font-weight:700;color:${O}">✓ ${lE}</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+    <span class="lbl" style="margin-bottom:0">Sets</span>
+    <button onclick="lSets.push({r:'',w:'',u:'lbs'});renderContent()" style="padding:3px 8px;background:${O};color:#fff;border:none;border-radius:5px;font-size:10px;font-weight:700">+ Set</button>
+  </div>
+  <div style="background:#0f0f18;border-radius:7px;padding:8px 9px;margin-bottom:9px">
+    <div class="sets-grid" style="margin-bottom:5px">${["#","Reps","Wt","Unit",""].map(h=>`<div style="font-size:8px;color:#555;text-transform:uppercase">${h}</div>`).join("")}</div>
+    ${lSets.map((s,i)=>`
+    <div class="sets-grid">
+      <div style="font-size:9px;color:#555;text-align:center;font-weight:700">${i+1}</div>
+      <input type="number" placeholder="10" value="${s.r}" oninput="lSets[${i}].r=this.value" style="margin-bottom:0;border-radius:5px;padding:7px">
+      <input type="number" placeholder="135" value="${s.w}" oninput="lSets[${i}].w=this.value" style="margin-bottom:0;border-radius:5px;padding:7px">
+      <select onchange="lSets[${i}].u=this.value" style="margin-bottom:0;border-radius:5px;padding:7px 3px;font-size:12px">
+        <option${s.u==="lbs"?" selected":""}>lbs</option>
+        <option${s.u==="kg"?" selected":""}>kg</option>
+        <option${s.u==="min"?" selected":""}>min</option>
+        <option${s.u==="sec"?" selected":""}>sec</option>
+      </select>
+      <button onclick="lSets.splice(${i},1);renderContent()" style="background:none;border:none;color:${O};font-size:12px;padding:0">✕</button>
+    </div>`).join("")}
+  </div>`:""}
+  <button class="pbtn${lE?"":" disabled"}" onclick="saveWo()" ${lE?"":"disabled"}>Save Workout</button>`;
+}
+
+function renderHistory(el){
+  const fH=D.wos.filter(w=>(hf==="all"||w.muscle===hf)&&(!hs||w.exercise.toLowerCase().includes(hs.toLowerCase())));
+  el.innerHTML=`
+  <b class="h1">History</b>
+  <input value="${hs}" oninput="hs=this.value;renderContent()" placeholder="Search exercises..." style="margin-bottom:8px">
+  <div style="margin-bottom:8px">${["all",...MG].map(f=>`<button class="chip${hf===f?' on':''}" onclick="hf='${f}';renderContent()">${f}</button>`).join("")}</div>
+  <div style="font-size:10px;color:#555;margin-bottom:7px">${fH.length} workouts</div>
+  ${!fH.length?`<div style="color:#555;text-align:center;padding:24px 0;font-size:12px">No workouts found.</div>`
+  :fH.map(w=>`
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+      <div><b style="font-size:12px">${w.exercise}</b><div style="font-size:10px;color:#555">${w.muscle} · ${fd(w.date)} ${ft(w.date)}</div></div>
+      <div style="display:flex;gap:5px">
+        <button onclick="relogWo('${w.id}')" style="background:none;border:1px solid rgba(255,60,0,0.3);border-radius:4px;color:${O};font-size:9px;padding:2px 4px;font-weight:700">↩</button>
+        <button style="background:none;border:none;color:#555;font-size:12px;padding:0;cursor:pointer" onclick="D.wos=D.wos.filter(x=>x.id!='${w.id}');save();renderContent()">🗑</button>
+      </div>
+    </div>
+    <div>${w.sets.map((s,i)=>`<span class="tag">S${i+1}${s.r?" "+s.r+"r":""}${s.w?" @"+s.w+s.u:""}</span>`).join("")}</div>
+  </div>`).join("")}`;
+}
+
+function renderPRs(el){
+  el.innerHTML=`<b class="h1">Personal Records 🏆</b>
+  ${!Object.keys(D.prs).length?`<div style="color:#555;text-align:center;padding:24px 0;font-size:12px">No PRs yet — start logging!</div>`
+  :MG.map(m=>{
+    const ent=Object.entries(D.prs).filter(([,p])=>p.muscle===m);
+    if(!ent.length)return"";
+    return`<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:4px;margin-top:10px">${m}</div>
+    ${ent.sort((a,b)=>b[1].weight-a[1].weight).map(([ex,p])=>`
+    <div class="card" style="border:1px solid rgba(255,60,0,0.2);display:flex;justify-content:space-between;align-items:center">
+      <div><b style="font-size:12px">${ex}</b><div style="font-size:10px;color:#555">${fd(p.date)}</div></div>
+      <b style="font-size:18px;color:${O}">${p.weight}<span style="font-size:10px"> ${p.unit}</span></b>
+    </div>`).join("")}`;
+  }).join("")}`;
+}
+
+function renderCardio(el){
+  const lp=cDist&&(parseInt(cM)||parseInt(cH))?((parseInt(cH)||0)*60+(parseInt(cM)||0)+(parseInt(cS)||0)/60)/parseFloat(cDist):null;
+  el.innerHTML=`
+  <b class="h1">Cardio 🏃</b>
+  <div class="card">
+    <div class="lbl">Activity Type</div>
+    <div style="margin-bottom:8px">${["Running","Walking","HIIT","Cycling","Rowing","Swimming","Elliptical","Other"].map(t=>`<button class="chip${cType===t?' on':''}" onclick="cType='${t}';renderContent()">${t}</button>`).join("")}</div>
+    <div class="lbl">Date</div>
+    <input type="date" value="${cDate}" oninput="cDate=this.value" style="margin-bottom:8px">
+    <div class="lbl">Distance</div>
+    <div style="display:flex;gap:5px;margin-bottom:8px">
+      <input type="number" value="${cDist}" oninput="cDist=this.value" placeholder="0.0" style="flex:1;margin-bottom:0">
+      <select onchange="cDu=this.value" style="margin-bottom:0;width:auto;padding:8px 6px">
+        <option${cDu==="mi"?" selected":""}>mi</option>
+        <option${cDu==="km"?" selected":""}>km</option>
+        <option${cDu==="m"?" selected":""}>m</option>
+      </select>
+    </div>
+    <div class="lbl">Time</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">
+      <div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Hrs</div><input type="number" value="${cH}" oninput="cH=this.value" placeholder="0" style="margin-bottom:0;text-align:center"></div>
+      <div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Mins</div><input type="number" value="${cM}" oninput="cM=this.value" placeholder="0" style="margin-bottom:0;text-align:center"></div>
+      <div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Secs</div><input type="number" value="${cS}" oninput="cS=this.value" placeholder="0" style="margin-bottom:0;text-align:center"></div>
+    </div>
+    ${lp?`<div style="background:rgba(255,60,0,0.05);border:1px solid rgba(255,60,0,0.1);border-radius:5px;padding:6px 10px;margin-bottom:8px;font-size:11px;color:#555">Pace: <b style="color:${O}">${lp.toFixed(2)}</b> min/${cDu}</div>`:""}
+    <div class="lbl">Course</div>
+    <input value="${cCourse}" oninput="cCourse=this.value" placeholder="Central Park, Treadmill..." style="margin-bottom:8px">
+    <button class="pbtn${cDist||cM?"":" disabled"}" onclick="saveCardio()" ${cDist||cM?"":"disabled"}>Save Activity</button>
+  </div>
+  ${D.cl.length?`<div class="lbl" style="margin-top:4px">History</div>
+  ${D.cl.map(c=>`
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+      <div><b style="font-size:12px">${c.type}</b><div style="font-size:10px;color:#555">${fd(new Date(c.date+"T12:00:00").toISOString())}${c.course?" · "+c.course:""}</div></div>
+      <button style="background:none;border:none;color:#555;font-size:12px;cursor:pointer" onclick="D.cl=D.cl.filter(x=>x.id!='${c.id}');save();renderContent()">🗑</button>
+    </div>
+    <div>
+      ${c.dist?`<span class="tag">📍${c.dist}${c.du}</span>`:""}
+      ${c.ts>0?`<span class="tag">⏱${c.h&&c.h!=="0"?c.h+"h ":""}${c.m&&c.m!=="0"?c.m+"m ":""}${c.s&&c.s!=="0"?c.s+"s":""}</span>`:""}
+      ${c.pace?`<span class="tag" style="background:rgba(255,60,0,0.1);color:${O}">🏃 ${c.pace} min/${c.du}</span>`:""}
+    </div>
+  </div>`).join("")}`:""}`;
+}
+
+function renderProtein(el){
+  const today=D.pr[tk()]||0;
+  const goal=parseInt(D.pg)||150;
+  const pct=Math.min((today/goal)*100,100);
+  el.innerHTML=`
+  <b class="h1">Protein 🥦</b>
+  <div class="card" style="margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span class="lbl" style="margin-bottom:0">Today</span>
+      ${today>0?`<button onclick="D.pr[tk()]=0;save();renderContent()" style="background:none;border:1px solid #1e1e2e;border-radius:4px;color:#555;font-size:9px;padding:1px 5px">Reset</button>`:""}
+    </div>
+    <b style="font-size:36px;color:${today>0?O:"#555"};display:block;margin-bottom:2px">${today}<span style="font-size:12px;color:#555"> g</span></b>
+    <div style="font-size:10px;color:#555;margin-bottom:8px">Goal: ${D.pg}g · ${Math.max(0,goal-today)}g left</div>
+    <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+    <div style="display:flex;gap:5px">
+      <input type="number" id="pi" placeholder="Add grams..." style="flex:1;margin-bottom:0">
+      <button class="pbtn sm" onclick="addProtein()">ADD</button>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:8px">
+    <div class="lbl">Daily Goal (g)</div>
+    <div style="display:flex;gap:5px">
+      <input type="number" value="${D.pg}" oninput="D.pg=this.value;save();renderContent()" placeholder="150" style="flex:1;margin-bottom:0">
+      <div style="padding:8px 10px;background:rgba(255,60,0,0.1);border:1px solid rgba(255,60,0,0.2);border-radius:7px;font-size:10px;color:${O};font-weight:700;display:flex;align-items:center">g/day</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="lbl">Last 7 Days</div>
+    ${Array.from({length:7},(_,i)=>{
+      const d=new Date();d.setDate(d.getDate()-(6-i));
+      const k=d.toISOString().split("T")[0];
+      const g=D.pr[k]||0;const isT=k===tk();
+      return`<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+        <div style="font-size:9px;color:${isT?O:"#555"};width:22px;text-align:right;font-weight:${isT?700:400}">${d.toLocaleDateString("en-US",{weekday:"short"})}</div>
+        <div style="flex:1;height:14px;background:#0f0f18;border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:${isT?O:g>=goal?"#00c853":"#333"};width:${g?Math.min((g/goal)*100,100):0}%;transition:width .4s"></div></div>
+        <div style="font-size:9px;color:${g?"#e8e8e8":"#555"};width:30px;text-align:right">${g?g+"g":"-"}</div>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+function renderProgress(el){
+  const bwV=Object.values(D.bw).map(v=>v.val);
+  const bwMn=bwV.length?Math.min(...bwV)-2:0;
+  const bwMx=bwV.length?Math.max(...bwV)+2:100;
+  const bmi=getBMI();
+  const bc=bmi?getBMICat(parseFloat(bmi)):null;
+  el.innerHTML=`
+  <b class="h1">Progress 📈</b>
+  <div class="card" style="margin-bottom:8px">
+    <b style="font-size:11px;text-transform:uppercase;display:block;margin-bottom:6px">Body Weight</b>
+    ${D.bw[tk()]?`<b style="font-size:26px;color:${O};display:block;margin-bottom:6px">${D.bw[tk()].val}<span style="font-size:11px;color:#555"> ${D.bw[tk()].unit}</span></b>`:""}
+    <div style="display:flex;gap:5px;margin-bottom:${bwV.length>1?8:0}px">
+      <input type="number" id="bwi" placeholder="Today's weight..." style="flex:1;margin-bottom:0">
+      <select id="bwu" style="margin-bottom:0;width:auto;padding:8px 6px"><option>lbs</option><option>kg</option></select>
+      <button class="pbtn sm" onclick="saveBW()">LOG</button>
+    </div>
+    ${bwV.length>1?`<div style="margin-top:8px">
+      <div style="font-size:9px;color:#555;margin-bottom:3px">14-day trend</div>
+      <div style="height:46px;display:flex;align-items:flex-end;gap:2px">
+        ${Array.from({length:14},(_,i)=>{
+          const d=new Date();d.setDate(d.getDate()-(13-i));
+          const k=d.toISOString().split("T")[0];
+          const v=D.bw[k]?.val||null;
+          const p=v?((v-bwMn)/(bwMx-bwMn))*42:0;
+          return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px"><div style="width:100%;border-radius:2px;background:${v?O:"#1a1a1a"};height:${v?Math.max(p,3):3}px"></div>${v?`<div style="font-size:6px;color:#555">${v}</div>`:""}</div>`;
+        }).join("")}
+      </div>
+    </div>`:""}
+  </div>
+  <div class="card" style="margin-bottom:8px">
+    <b style="font-size:11px;text-transform:uppercase;display:block;margin-bottom:6px">BMI Calculator</b>
+    <div style="font-size:9px;color:#555;margin-bottom:6px">Uses your latest logged weight</div>
+    <div style="display:flex;gap:5px;margin-bottom:8px">
+      <input type="number" value="${D.ht}" oninput="D.ht=this.value;save();renderContent()" placeholder="${D.hu==='ft'?'5.10 (ft.in)':'175 (cm)'}" style="flex:1;margin-bottom:0">
+      <select onchange="D.hu=this.value;save();renderContent()" style="margin-bottom:0;width:auto;padding:8px 6px">
+        <option value="ft"${D.hu==="ft"?" selected":""}>ft/in</option>
+        <option value="cm"${D.hu==="cm"?" selected":""}>cm</option>
+      </select>
+    </div>
+    ${bmi?`<div style="text-align:center;padding:10px;background:#0f0f18;border-radius:7px">
+      <b style="font-size:36px;color:${bc?.c};display:block">${bmi}</b>
+      <b style="font-size:12px;color:${bc?.c};display:block;margin-bottom:2px">${bc?.l}</b>
+      <div style="font-size:8px;color:#555">Under 18.5 · Normal 18.5–25 · Over 25–30 · Obese 30+</div>
+    </div>`:""}
+  </div>
+  <div class="card">
+    <b style="font-size:11px;text-transform:uppercase;display:block;margin-bottom:6px">Rest Day Planner 🛌</b>
+    <div style="font-size:9px;color:#555;margin-bottom:6px">Tap to mark rest days — keeps your streak 🔥</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">
+      ${Array.from({length:14},(_,i)=>{
+        const d=new Date();d.setDate(d.getDate()-7+i);
+        const k=d.toISOString().split("T")[0];
+        const isR=D.rd.includes(k);
+        const hasW=D.wos.some(w=>new Date(w.date).toDateString()===d.toDateString());
+        const isT=k===tk();
+        return`<div onclick="${hasW?"":"toggleRD('"+k+"')"}" style="padding:4px 2px;border-radius:5px;text-align:center;cursor:${hasW?"default":"pointer"};background:${hasW?"rgba(255,60,0,0.2)":isR?"rgba(0,200,83,0.2)":"#1a1a1a"};border:1px solid ${isT?O:hasW?"rgba(255,60,0,0.3)":isR?"rgba(0,200,83,0.3)":"#1e1e2e"}">
+          <div style="font-size:7px;color:#555">${d.toLocaleDateString("en-US",{weekday:"short"})}</div>
+          <b style="font-size:9px;color:${hasW?O:isR?"#00c853":"#e8e8e8"};display:block">${d.getDate()}</b>
+          <div style="font-size:8px">${hasW?"💪":isR?"😴":""}</div>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>`;
+}
+
+// Actions
+function saveWo(){
+  if(!lE)return;
+  const sets=lSets.filter(s=>s.r||s.w);
+  const e={id:String(Date.now()),date:new Date().toISOString(),muscle:lM,exercise:lE,sets};
+  D.wos.unshift(e);
+  const mw=Math.max(...lSets.map(s=>parseFloat(s.w)||0));
+  if(mw>0){const cur=D.prs[lE]?.weight||0;if(mw>cur){showPR(lE);D.prs[lE]={weight:mw,unit:lSets[0]?.u||"lbs",date:new Date().toISOString(),muscle:lM};}}
+  lE="";lSets=[{r:"",w:"",u:"lbs"}];
+  save();renderContent();
+  const msg=document.createElement("div");msg.className="saved";msg.textContent="✅ Workout saved!";
+  document.getElementById("content").prepend(msg);setTimeout(()=>msg.remove(),2500);
+}
+
+function relogWo(id){
+  const w=D.wos.find(x=>x.id===id);
+  if(!w)return;
+  lM=w.muscle;lE=w.exercise;lSets=w.sets.map(s=>({...s}));
+  setTab("Log");
+}
+
+function addCx(){
+  const n=(document.getElementById("cxinput")?.value||cxName).trim();
+  if(!n)return;
+  if(!D.cx[lM])D.cx[lM]=[];
+  D.cx[lM].push(n);
+  lE=n;cxName="";showCx=false;
+  save();renderContent();
+}
+
+function saveCardio(){
+  if(!cDist&&!cM)return;
+  const ts=(parseInt(cH)||0)*3600+(parseInt(cM)||0)*60+(parseInt(cS)||0);
+  const pace=cDist&&ts?((ts/60)/parseFloat(cDist)).toFixed(2):null;
+  D.cl.unshift({id:String(Date.now()),date:cDate,type:cType,dist:cDist,du:cDu,h:cH,m:cM,s:cS,ts,pace,course:cCourse});
+  cDist="";cH="";cM="";cS="";cCourse="";cDate=tk();
+  save();renderContent();
+  const msg=document.createElement("div");msg.className="saved";msg.textContent="✅ Activity saved!";
+  document.getElementById("content").prepend(msg);setTimeout(()=>msg.remove(),2500);
+}
+
+function addProtein(){
+  const v=parseInt(document.getElementById("pi")?.value)||0;
+  if(!v)return;
+  D.pr[tk()]=(D.pr[tk()]||0)+v;
+  save();renderContent();
+}
+
+function saveBW(){
+  const v=parseFloat(document.getElementById("bwi")?.value);
+  const u=document.getElementById("bwu")?.value||"lbs";
+  if(!v)return;
+  D.bw[tk()]={val:v,unit:u};
+  save();renderContent();
+}
+
+function toggleRD(k){
+  if(D.rd.includes(k))D.rd=D.rd.filter(d=>d!==k);else D.rd.push(k);
+  save();renderContent();
+}
+
+function getBMI(){
+  const e=Object.entries(D.bw).sort((a,b)=>b[0].localeCompare(a[0]));
+  if(!e.length||!D.ht)return null;
+  const{val,unit}=e[0][1];
+  const kg=unit==="lbs"?val*0.453592:val;
+  let hm;
+  if(D.hu==="ft"){
+    const s=D.ht.toString();const dot=s.indexOf(".");
+    const f=parseInt(dot>=0?s.slice(0,dot):s)||0;
+    const n=parseInt(dot>=0?s.slice(dot+1):0)||0;
+    hm=(f*12+n)*0.0254;
+  }else hm=parseFloat(D.ht)/100;
+  return hm?(kg/(hm*hm)).toFixed(1):null;
+}
+
+function getBMICat(b){
+  return b<18.5?{l:"Underweight",c:"#38f"}:b<25?{l:"Normal",c:"#0c8"}:b<30?{l:"Overweight",c:"#fa0"}:{l:"Obese",c:"#f40"};
+}
+
+// Init
+renderTabs();
+renderContent();
+</script>
+</body>
+</html>

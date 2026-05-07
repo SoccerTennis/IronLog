@@ -152,32 +152,54 @@ function renderDash(el){
 }
 
 // LOG
-let logState={muscle:"Chest",exercise:"",sets:[{r:"",w:"",u:"lbs"}],muscleSearch:"",exSearch:"",showCx:false,cxName:"",saved:false};
+let logState={muscle:"Chest",exercise:"",sets:[{r:"",w:"",u:"lbs"}],muscleSearch:"",exSearch:"",globalSearch:"",showCx:false,cxName:"",saved:false};
 function renderLog(el){
   const fMG=MG.filter(m=>m.toLowerCase().includes(logState.muscleSearch.toLowerCase()));
   const fEX=aE(logState.muscle).filter(e=>e.toLowerCase().includes(logState.exSearch.toLowerCase()));
+
+  // Global search across all muscles
+  const allEx=[];
+  MG.forEach(m=>{aE(m).forEach(e=>{allEx.push({e,m});});});
+  const gResults=logState.globalSearch.length>0?allEx.filter(x=>x.e.toLowerCase().includes(logState.globalSearch.toLowerCase())):[];
+
   el.innerHTML=`
   <b class="h1">Log Workout</b>
   ${logState.saved?`<div class="saved">✅ Workout saved!</div>`:""}
+  <div style="position:relative;margin-bottom:12px">
+    <input id="global-search" value="${logState.globalSearch}" placeholder="🔍 Search all exercises..." style="margin-bottom:0;font-size:14px;border:1px solid ${logState.globalSearch?"#ff3c00":"#222"}">
+    ${logState.globalSearch?`<button onclick="clearGlobalSearch()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#555;font-size:14px;cursor:pointer">✕</button>`:""}
+  </div>
+  ${logState.globalSearch?`
+  <div style="max-height:220px;overflow-y:auto;margin-bottom:10px">
+    ${gResults.length?gResults.map(x=>`<button class="ex${logState.exercise===x.e?' sel':''}" onclick="setExerciseGlobal('${x.e.replace(/'/g,"\'")}','${x.m}')"><span>${x.e}</span><span style="font-size:9px;color:#555;margin-left:8px;text-transform:uppercase">${x.m}</span></button>`).join("")
+    :`<div style="color:#555;text-align:center;padding:16px;font-size:12px">No exercises found</div>`}
+  </div>`:`
   <div class="lbl">Muscle Group</div>
-  <input id="muscle-search" value="${logState.muscleSearch}" placeholder="Search..." style="margin-bottom:9px">
+  <input id="muscle-search" value="${logState.muscleSearch}" placeholder="Filter muscle groups..." style="margin-bottom:9px">
   <div style="margin-bottom:11px">${fMG.map(m=>`<button class="chip${logState.muscle===m?' on':''}" onclick="setMuscle('${m}')">${m}</button>`).join("")}</div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
     <span class="lbl" style="margin-bottom:0">Exercise (${fEX.length})</span>
-    <button onclick="toggleCx()" style="background:none;border:1px solid rgba(255,60,0,0.3);border-radius:5px;color:${O};font-size:10px;padding:3px 8px;font-weight:700">+ Custom</button>
+    <button onclick="toggleCx()" style="background:none;border:1px solid rgba(255,60,0,0.3);border-radius:5px;color:#ff3c00;font-size:10px;padding:3px 8px;font-weight:700">+ Custom</button>
   </div>
-  ${logState.showCx?`<div style="display:flex;gap:6px;margin-bottom:9px"><input id="cx-input" value="${logState.cxName}" placeholder="Exercise name..." style="flex:1;margin-bottom:0"><button onclick="addCx()" style="padding:8px 12px;background:${O};color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:700">Add</button><button onclick="toggleCx()" style="background:none;border:none;color:#555;font-size:15px">✕</button></div>`:""}
+  ${logState.showCx?`<div style="display:flex;gap:6px;margin-bottom:9px"><input id="cx-input" value="${logState.cxName}" placeholder="Exercise name..." style="flex:1;margin-bottom:0"><button onclick="addCx()" style="padding:8px 12px;background:#ff3c00;color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:700">Add</button><button onclick="toggleCx()" style="background:none;border:none;color:#555;font-size:15px">✕</button></div>`:""}
   <input id="ex-search" value="${logState.exSearch}" placeholder="Search ${logState.muscle}..." style="margin-bottom:9px">
-  <div style="max-height:160px;overflow-y:auto;margin-bottom:10px">${fEX.map(e=>`<button class="ex${logState.exercise===e?' sel':''}" onclick="setExercise('${e.replace(/'/g,"\\'")}')">${e}</button>`).join("")}</div>
+  <div style="max-height:160px;overflow-y:auto;margin-bottom:10px">${fEX.map(e=>`<button class="ex${logState.exercise===e?' sel':''}" onclick="setExercise('${e.replace(/'/g,"\'")}')">${e}</button>`).join("")}</div>`}
   ${logState.exercise?`
-  <div style="background:rgba(255,60,0,0.05);border:1px solid rgba(255,60,0,0.2);border-radius:7px;padding:8px 12px;margin-bottom:10px;font-size:13px;font-weight:700;color:${O}">✓ ${logState.exercise}</div>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span class="lbl" style="margin-bottom:0">Sets</span><button onclick="addSet()" style="padding:4px 10px;background:${O};color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:700">+ Set</button></div>
+  <div style="background:rgba(255,60,0,0.05);border:1px solid rgba(255,60,0,0.2);border-radius:7px;padding:8px 12px;margin-bottom:10px;font-size:13px;font-weight:700;color:#ff3c00">✓ ${logState.exercise}</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span class="lbl" style="margin-bottom:0">Sets</span><button onclick="addSet()" style="padding:4px 10px;background:#ff3c00;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:700">+ Set</button></div>
   <div style="background:#0f0f18;border-radius:7px;padding:9px 10px;margin-bottom:10px">
     <div class="sets-grid" style="margin-bottom:6px">${["#","Reps","Wt","Unit",""].map(h=>`<div style="font-size:8px;color:#555;text-transform:uppercase">${h}</div>`).join("")}</div>
-    ${logState.sets.map((s,i)=>`<div class="sets-grid"><div style="font-size:10px;color:#555;text-align:center;font-weight:700">${i+1}</div><input type="number" id="rep-${i}" placeholder="10" value="${s.r}" style="margin-bottom:0;border-radius:5px;padding:7px;font-size:13px"><input type="number" id="wt-${i}" placeholder="135" value="${s.w}" style="margin-bottom:0;border-radius:5px;padding:7px;font-size:13px"><select id="unit-${i}" style="margin-bottom:0;border-radius:5px;padding:7px 3px;font-size:12px"><option${s.u==="lbs"?" selected":""}>lbs</option><option${s.u==="kg"?" selected":""}>kg</option><option${s.u==="min"?" selected":""}>min</option><option${s.u==="sec"?" selected":""}>sec</option></select><button onclick="remSet(${i})" style="background:none;border:none;color:${O};font-size:13px;padding:0">✕</button></div>`).join("")}
+    ${logState.sets.map((s,i)=>`<div class="sets-grid"><div style="font-size:10px;color:#555;text-align:center;font-weight:700">${i+1}</div><input type="number" id="rep-${i}" placeholder="10" value="${s.r}" style="margin-bottom:0;border-radius:5px;padding:7px;font-size:13px"><input type="number" id="wt-${i}" placeholder="135" value="${s.w}" style="margin-bottom:0;border-radius:5px;padding:7px;font-size:13px"><select id="unit-${i}" style="margin-bottom:0;border-radius:5px;padding:7px 3px;font-size:12px"><option${s.u==="lbs"?" selected":""}>lbs</option><option${s.u==="kg"?" selected":""}>kg</option><option${s.u==="min"?" selected":""}>min</option><option${s.u==="sec"?" selected":""}>sec</option></select><button onclick="remSet(${i})" style="background:none;border:none;color:#ff3c00;font-size:13px;padding:0">✕</button></div>`).join("")}
   </div>`:""}
   <button class="pbtn${logState.exercise?"":" disabled"}" onclick="saveWo()" ${logState.exercise?"":"disabled"}>Save Workout</button>`;
 
+  const gs=document.getElementById("global-search");
+  if(gs)gs.addEventListener("input",e=>{
+    logState.globalSearch=e.target.value;
+    renderLog(el);
+    const r=document.getElementById("global-search");
+    if(r){r.focus();const l=r.value?.length||0;if(r.setSelectionRange)r.setSelectionRange(l,l);}
+  });
   const ms=document.getElementById("muscle-search");
   if(ms)ms.addEventListener("input",e=>{logState.muscleSearch=e.target.value;const ae=document.activeElement?.id;renderLog(el);const r=document.getElementById(ae);if(r){r.focus();const l=r.value?.length||0;if(r.setSelectionRange)r.setSelectionRange(l,l);}});
   const es=document.getElementById("ex-search");
@@ -191,6 +213,8 @@ function renderLog(el){
     if(ui)ui.addEventListener("change",e=>{logState.sets[i].u=e.target.value;});
   });
 }
+function clearGlobalSearch(){logState.globalSearch="";renderLog(document.getElementById("content"));}
+function setExerciseGlobal(e,m){logState.exercise=e;logState.muscle=m;logState.globalSearch="";renderLog(document.getElementById("content"));}
 function setMuscle(m){logState.muscle=m;logState.exercise="";logState.exSearch="";logState.muscleSearch="";renderLog(document.getElementById("content"));}
 function setExercise(e){logState.exercise=e;renderLog(document.getElementById("content"));}
 function toggleCx(){logState.showCx=!logState.showCx;renderLog(document.getElementById("content"));}
@@ -245,7 +269,7 @@ function renderCardio(el){
   ${cardioState.saved?`<div class="saved">✅ Activity saved!</div>`:""}
   <div class="card">
     <div class="lbl">Activity Type</div>
-    <div style="margin-bottom:9px">${["Running","Walking","HIIT","Cycling","Rowing","Swimming","Elliptical","Other"].map(t=>`<button class="chip${cardioState.type===t?' on':''}" onclick="setCType('${t}')">${t}</button>`).join("")}</div>
+    <div style="margin-bottom:9px">${["Running","Walking","HIIT","Cycling","Rowing","Swimming","Elliptical","Tennis","Basketball","Soccer","Football","Baseball","Volleyball","Pickleball","Golf","Other"].map(t=>`<button class="chip${cardioState.type===t?' on':''}" onclick="setCType('${t}')">${t}</button>`).join("")}</div>
     <div class="lbl">Date</div><input type="date" id="c-date" value="${cardioState.date}" style="margin-bottom:9px">
     <div class="lbl">Distance</div>
     <div style="display:flex;gap:6px;margin-bottom:9px">

@@ -8,13 +8,15 @@
 <meta name="apple-mobile-web-app-title" content="IronLog">
 <title>IronLog</title>
 <style>
+:root{--bg:#0a0a0f;--sf:#13131f;--bd:#1e1e2e;--tx:#e8e8e8;--sb:#555;--ib:#0f0f18;--ir:#222}
+.light{--bg:#f5f5f5;--sf:#ffffff;--bd:#e0e0e0;--tx:#1a1a1a;--sb:#999;--ib:#eeeeee;--ir:#ccc}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0a0a0f;color:#e8e8e8;font-family:-apple-system,sans-serif;min-height:100vh;display:flex;flex-direction:column;overscroll-behavior:none}
+body{background:var(--bg);color:var(--tx);font-family:-apple-system,sans-serif;min-height:100vh;display:flex;flex-direction:column;overscroll-behavior:none}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#ff3c00;border-radius:2px}
-input,select,textarea{background:#0f0f18;border:1px solid #222;border-radius:7px;color:#e8e8e8;padding:8px 10px;font-size:14px;width:100%;font-family:-apple-system,sans-serif;outline:none;-webkit-appearance:none}
+input,select,textarea{background:var(--ib);border:1px solid var(--ir);border-radius:7px;color:var(--tx);padding:8px 10px;font-size:14px;width:100%;font-family:-apple-system,sans-serif;outline:none;-webkit-appearance:none}
 input:focus,select:focus{border-color:#ff3c00}
 button{font-family:-apple-system,sans-serif;cursor:pointer}
-.card{background:#13131f;border:1px solid #1e1e2e;border-radius:9px;padding:12px 13px;margin-bottom:8px}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:12px 13px;margin-bottom:8px}
 .chip{padding:5px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;border:1px solid #1e1e2e;background:#1a1a28;color:#555;margin-right:4px;margin-bottom:5px;cursor:pointer;display:inline-block}
 .chip.on{background:#ff3c00;color:#fff;border-color:#ff3c00}
 .ex{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:6px;font-size:13px;font-weight:600;color:#e8e8e8;margin-bottom:4px;background:#0f0f18;border:1px solid #1a1a2a;cursor:pointer}
@@ -26,14 +28,14 @@ button{font-family:-apple-system,sans-serif;cursor:pointer}
 .pbtn{padding:12px;background:#ff3c00;color:#fff;border:none;border-radius:7px;font-size:14px;font-weight:800;letter-spacing:1px;text-transform:uppercase;width:100%}
 .pbtn:disabled{background:#1a1a1a;color:#555;cursor:not-allowed}
 .pbtn.sm{width:auto;padding:8px 12px;font-size:12px}
-.tabs{display:flex;overflow-x:auto;background:#111118;border-bottom:1px solid #1e1e2e;flex-shrink:0;-webkit-overflow-scrolling:touch}
-.tabs button{padding:10px 11px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:transparent;color:#555;border:none;flex-shrink:0;white-space:nowrap}
+.tabs{display:flex;overflow-x:auto;background:var(--sf);border-bottom:1px solid var(--bd);flex-shrink:0;-webkit-overflow-scrolling:touch}
+.tabs button{padding:10px 11px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:transparent;color:var(--sb);border:none;flex-shrink:0;white-space:nowrap}
 .tabs button.on{background:#ff3c00;color:#fff}
 .content{flex:1;padding:14px 12px;max-width:600px;width:100%;margin:0 auto;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .sets-grid{display:grid;grid-template-columns:20px 1fr 1fr 60px 20px;gap:5px;align-items:center;margin-bottom:5px}
 #pr-banner{position:fixed;top:0;left:0;right:0;z-index:1000;background:#ff3c00;padding:12px;text-align:center;display:none;font-size:14px;font-weight:800;color:#fff;letter-spacing:2px}
-.profile-bar{display:flex;background:#0f0f18;border-bottom:1px solid #1e1e2e;padding:6px 12px;gap:8px;align-items:center;flex-shrink:0}
-.prof-btn{padding:5px 14px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid #1e1e2e;background:#1a1a28;color:#555;cursor:pointer}
+.profile-bar{display:flex;background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;gap:8px;align-items:center;flex-shrink:0}
+.prof-btn{padding:5px 14px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid var(--bd);background:var(--ib);color:var(--sb);cursor:pointer}
 .prof-btn.active{background:#ff3c00;color:#fff;border-color:#ff3c00}
 .modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:500;display:flex;align-items:flex-end}
 .modal{background:#13131f;border:1px solid #1e1e2e;border-radius:16px 16px 0 0;width:100%;padding:20px}
@@ -45,6 +47,7 @@ button{font-family:-apple-system,sans-serif;cursor:pointer}
   <b style="font-size:18px;letter-spacing:3px;color:#ff3c00">⚔ IRONLOG</b>
   <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
     <b id="streak-badge" style="font-size:12px;color:#ff3c00;display:none"></b>
+    <button onclick="toggleTheme()" id="theme-btn" style="background:none;border:none;font-size:16px;cursor:pointer">🌙</button>
     <span id="date-lbl" style="font-size:10px;color:#555"></span>
   </div>
 </div>
@@ -83,6 +86,7 @@ let profiles=[newData(),newData()];
 let profileNames=["User 1","User 2"];
 let activeProfile=0;
 let tab="Dashboard";
+let darkMode=true;
 let saveTimer=null;
 
 try{const s=localStorage.getItem("il_profiles");if(s){const p=JSON.parse(s);profiles=p.map(d=>({...newData(),...d}));}const n=localStorage.getItem("il_names");if(n)profileNames=JSON.parse(n);}catch(e){}
@@ -108,6 +112,13 @@ function aE(m){return[...(EX[m]||[]),...(D().cx[m]||[])];}
 document.getElementById("date-lbl").textContent=new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
 updateProfileBar();
 
+function toggleTheme(){
+  darkMode=!darkMode;
+  document.body.className=darkMode?"":"light";
+  document.getElementById("theme-btn").textContent=darkMode?"🌙":"☀️";
+  // Update hardcoded dark colors in rendered content
+  renderContent();
+}
 function renderTabs(){document.getElementById("tabs").innerHTML=TABS.map(t=>`<button class="${tab===t?'on':''}" onclick="setTab('${t}')">${t}</button>`).join("");}
 function setTab(t){tab=t;renderTabs();renderContent();}
 
@@ -203,7 +214,10 @@ let histState={hf:"all",hs:""};
 function renderHistory(el){
   const fH=D().wos.filter(w=>(histState.hf==="all"||w.muscle===histState.hf)&&(!histState.hs||w.exercise.toLowerCase().includes(histState.hs.toLowerCase())));
   el.innerHTML=`
-  <b class="h1">History</b>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <b style="font-size:16px;letter-spacing:2px;text-transform:uppercase;color:#ff3c00">History</b>
+    <button onclick="exportCSV()" style="padding:6px 12px;background:none;border:1px solid rgba(255,60,0,0.4);border-radius:6px;color:#ff3c00;font-size:10px;font-weight:700;cursor:pointer">⬇ CSV</button>
+  </div>
   <input id="hist-search" value="${histState.hs}" placeholder="Search exercises..." style="margin-bottom:9px">
   <div style="margin-bottom:9px">${["all",...MG].map(f=>`<button class="chip${histState.hf===f?' on':''}" onclick="setHF('${f}')">${f}</button>`).join("")}</div>
   <div style="font-size:10px;color:#555;margin-bottom:8px">${fH.length} workouts</div>
@@ -213,7 +227,7 @@ function renderHistory(el){
   if(hs)hs.addEventListener("input",e=>{histState.hs=e.target.value;renderHistory(el);});
 }
 function setHF(f){histState.hf=f;renderHistory(document.getElementById("content"));}
-function deleteWo(id){D().wos=D().wos.filter(x=>x.id!==id);save();renderHistory(document.getElementById("content"));}
+function deleteWo(id){if(!confirm("Delete this workout?"))return;D().wos=D().wos.filter(x=>x.id!==id);save();renderHistory(document.getElementById("content"));}
 
 // PRs
 function renderPRs(el){
@@ -265,7 +279,7 @@ function saveCardio(){
   save();renderCardio(document.getElementById("content"));
   setTimeout(()=>{cardioState.saved=false;renderCardio(document.getElementById("content"));},2500);
 }
-function deleteCardio(id){D().cl=D().cl.filter(x=>x.id!==id);save();renderCardio(document.getElementById("content"));}
+function deleteCardio(id){if(!confirm("Delete this activity?"))return;D().cl=D().cl.filter(x=>x.id!==id);save();renderCardio(document.getElementById("content"));}
 
 // PROTEIN
 function renderProtein(el){
@@ -298,7 +312,7 @@ function renderProtein(el){
   });
 }
 function addProtein(){const v=parseInt(document.getElementById("prot-input")?.value)||0;if(!v)return;D().pr[tk()]=(D().pr[tk()]||0)+v;save();renderProtein(document.getElementById("content"));}
-function resetProtein(){D().pr[tk()]=0;save();renderProtein(document.getElementById("content"));}
+function resetProtein(){if(!confirm("Reset today's protein?"))return;D().pr[tk()]=0;save();renderProtein(document.getElementById("content"));}
 
 // PROGRESS
 function renderProgress(el){
@@ -325,8 +339,45 @@ function renderProgress(el){
   const gridPoints=level=>balanceMG.map((_,i)=>{const angle=(i/n)*Math.PI*2-Math.PI/2;return`${cx2+r*level*Math.cos(angle)},${cy2+r*level*Math.sin(angle)}`;}).join(" ");
   const labelPoints=balanceMG.map((_,i)=>{const angle=(i/n)*Math.PI*2-Math.PI/2;return{x:cx2+(r+18)*Math.cos(angle),y:cy2+(r+18)*Math.sin(angle),label:balanceMG[i]};});
 
+  // Weekly summary
+  const ws=getWeeklySummary();
+  const volDiff=ws.lastVol>0?Math.round(((ws.thisVol-ws.lastVol)/ws.lastVol)*100):null;
+  const volDiffStr=volDiff!==null?(volDiff>=0?"+"+volDiff+"%":volDiff+"%"):"-";
+  const volColor=volDiff>0?"#00c853":volDiff<0?"#ff3c00":"#555";
+
+  // Volume by muscle
+  const vbm=getVolumeByMuscle();
+  const maxVol=vbm.length?vbm[0][1]:1;
+
   el.innerHTML=`
   <b class="h1">Progress 📈</b>
+
+  <div class="card" style="margin-bottom:9px">
+    <b style="font-size:12px;text-transform:uppercase;display:block;margin-bottom:10px">Weekly Summary</b>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:10px">
+      ${[{l:"Workouts",v:ws.thisWos,p:ws.lastWos},{l:"Sets",v:ws.thisSets,p:ws.lastSets},{l:"Reps",v:ws.thisReps,p:ws.lastReps},{l:"Volume",v:ws.thisVol>0?(ws.thisVol/1000).toFixed(1)+"k":"0",p:ws.lastVol}].map(s=>{
+        const diff=s.p>0?Math.round(((s.v-(typeof s.v==="string"?parseFloat(s.v):s.v))/s.p)*100):null;
+        return`<div class="card" style="padding:8px 5px;text-align:center;margin-bottom:0">
+          <b style="font-size:14px;color:#ff3c00;display:block">${s.v}</b>
+          <div style="font-size:8px;color:#555;text-transform:uppercase">${s.l}</div>
+        </div>`;
+      }).join("")}
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:11px;color:#555">vs last week</span>
+      <span style="font-size:12px;font-weight:700;color:${volColor}">${volDiffStr} volume</span>
+    </div>
+  </div>
+
+  ${vbm.length?`<div class="card" style="margin-bottom:9px">
+    <b style="font-size:12px;text-transform:uppercase;display:block;margin-bottom:10px">Volume by Muscle</b>
+    ${vbm.map(([m,v])=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="font-size:11px;color:#888;width:80px;flex-shrink:0">${m}</div>
+      <div style="flex:1;height:12px;background:#0f0f18;border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:#ff3c00;width:${Math.round((v/maxVol)*100)}%;transition:width .4s"></div></div>
+      <div style="font-size:10px;color:#555;width:40px;text-align:right">${v>1000?(v/1000).toFixed(1)+"k":Math.round(v)}</div>
+    </div>`).join("")}
+  </div>`:""}
+
   <div class="card" style="margin-bottom:9px">
     <b style="font-size:12px;text-transform:uppercase;display:block;margin-bottom:7px">Body Weight</b>
     ${D().bw[tk()]?`<b style="font-size:28px;color:${O};display:block;margin-bottom:7px">${D().bw[tk()].val}<span style="font-size:12px;color:#555"> ${D().bw[tk()].unit}</span></b>`:""}
@@ -335,7 +386,19 @@ function renderProgress(el){
       <select id="bw-unit" style="margin-bottom:0;width:auto;padding:8px 7px"><option>lbs</option><option>kg</option></select>
       <button class="pbtn sm" onclick="saveBW()">LOG</button>
     </div>
-    ${bwV.length>1?`<div style="margin-top:9px"><div style="font-size:9px;color:#555;margin-bottom:4px">14-day trend</div><div style="height:46px;display:flex;align-items:flex-end;gap:2px">${Array.from({length:14},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(13-i));const k=d.toISOString().split("T")[0];const v=D().bw[k]?.val||null;const p=v?((v-bwMn)/(bwMx-bwMn))*42:0;return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px"><div style="width:100%;border-radius:2px;background:${v?O:"#1a1a1a"};height:${v?Math.max(p,3):3}px"></div>${v?`<div style="font-size:6px;color:#555">${v}</div>`:""}</div>`;}).join("")}</div></div>`:""}
+    ${bwV.length>1?(()=>{
+    const bwEntries=Object.entries(D().bw).sort((a,b)=>a[0].localeCompare(b[0]));
+    const first=bwEntries[0][1].val;
+    const last=bwEntries[bwEntries.length-1][1].val;
+    const diff=(last-first).toFixed(1);
+    const diffColor=diff<0?"#00c853":diff>0?"#ff3c00":"#555";
+    const unit=bwEntries[0][1].unit;
+    return`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;margin-bottom:4px">
+      <span style="font-size:10px;color:#555">Since you started</span>
+      <b style="font-size:13px;color:${diffColor}">${diff>0?"+":""}${diff} ${unit}</b>
+    </div>`;
+  })():""}
+${bwV.length>1?`<div style="margin-top:4px"><div style="font-size:9px;color:#555;margin-bottom:4px">14-day trend</div><div style="height:46px;display:flex;align-items:flex-end;gap:2px">${Array.from({length:14},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(13-i));const k=d.toISOString().split("T")[0];const v=D().bw[k]?.val||null;const p=v?((v-bwMn)/(bwMx-bwMn))*42:0;return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px"><div style="width:100%;border-radius:2px;background:${v?O:"#1a1a1a"};height:${v?Math.max(p,3):3}px"></div>${v?`<div style="font-size:6px;color:#555">${v}</div>`:""}</div>`;}).join("")}</div></div>`:""}
   </div>
   <div class="card" style="margin-bottom:9px">
     <b style="font-size:12px;text-transform:uppercase;display:block;margin-bottom:7px">BMI Calculator</b>
@@ -387,6 +450,43 @@ function toggleRD(k){if(D().rd.includes(k))D().rd=D().rd.filter(d=>d!==k);else D
 function getBMI(){const e=Object.entries(D().bw).sort((a,b)=>b[0].localeCompare(a[0]));if(!e.length||!D().ht)return null;const{val,unit}=e[0][1];const kg=unit==="lbs"?val*0.453592:val;let hm;if(D().hu==="ft"){const s=D().ht.toString();const dot=s.indexOf(".");const f=parseInt(dot>=0?s.slice(0,dot):s)||0;const n=parseInt(dot>=0?s.slice(dot+1):0)||0;hm=(f*12+n)*0.0254;}else hm=parseFloat(D().ht)/100;return hm?(kg/(hm*hm)).toFixed(1):null;}
 function getBMICat(b){return b<18.5?{l:"Underweight",c:"#38f"}:b<25?{l:"Normal",c:"#0c8"}:b<30?{l:"Overweight",c:"#fa0"}:{l:"Obese",c:"#f40"};}
 
+
+function exportCSV(){
+  const rows=[["Date","Time","Exercise","Muscle","Set","Reps","Weight","Unit"]];
+  D().wos.forEach(w=>{
+    if(w.sets.length===0){rows.push([new Date(w.date).toLocaleDateString(),new Date(w.date).toLocaleTimeString(),w.exercise,w.muscle,"","","",""]);}
+    w.sets.forEach((s,i)=>rows.push([new Date(w.date).toLocaleDateString(),new Date(w.date).toLocaleTimeString(),w.exercise,w.muscle,i+1,s.r||"",s.w||"",s.u||"lbs"]));
+  });
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="ironlog.csv";a.click();
+  URL.revokeObjectURL(url);
+}
+
+function getWeeklySummary(){
+  const now=new Date();
+  const thisWeek=D().wos.filter(w=>(now-new Date(w.date))/864e5<7);
+  const lastWeek=D().wos.filter(w=>{const d=(now-new Date(w.date))/864e5;return d>=7&&d<14;});
+  const vol=ws=>ws.reduce((a,w)=>a+w.sets.reduce((b,s)=>b+(parseFloat(s.w)||0)*(parseFloat(s.r)||0),0),0);
+  const sets=ws=>ws.reduce((a,w)=>a+w.sets.length,0);
+  const reps=ws=>ws.reduce((a,w)=>a+w.sets.reduce((b,s)=>b+(parseFloat(s.r)||0),0),0);
+  return{
+    thisVol:vol(thisWeek),lastVol:vol(lastWeek),
+    thisSets:sets(thisWeek),lastSets:sets(lastWeek),
+    thisReps:reps(thisWeek),lastReps:reps(lastWeek),
+    thisWos:thisWeek.length,lastWos:lastWeek.length
+  };
+}
+
+function getVolumeByMuscle(){
+  const result={};
+  D().wos.forEach(w=>{
+    const v=w.sets.reduce((b,s)=>b+(parseFloat(s.w)||0)*(parseFloat(s.r)||0),0);
+    result[w.muscle]=(result[w.muscle]||0)+v;
+  });
+  return Object.entries(result).sort((a,b)=>b[1]-a[1]).slice(0,6);
+}
 function renderContent(){
   const el=document.getElementById("content");
   if(tab==="Dashboard")renderDash(el);

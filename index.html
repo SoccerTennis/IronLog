@@ -352,6 +352,12 @@ function renderLog(el){
   });
   const cn=document.getElementById("c-notes");
   if(cn)cn.addEventListener("input",e=>{cardioState.notes=e.target.value;});
+  const sh=document.getElementById("c-sport-how");
+  if(sh)sh.addEventListener("input",e=>{cardioState.sportHow=e.target.value;});
+  const sl=document.getElementById("c-sport-learn");
+  if(sl)sl.addEventListener("input",e=>{cardioState.sportLearn=e.target.value;});
+  const sw=document.getElementById("c-sport-work");
+  if(sw)sw.addEventListener("input",e=>{cardioState.sportWork=e.target.value;});
   const ms=document.getElementById("muscle-search");
   if(ms)ms.addEventListener("input",e=>{logState.muscleSearch=e.target.value;const ae=document.activeElement?.id;renderLog(el);const r=document.getElementById(ae);if(r){r.focus();const l=r.value?.length||0;if(r.setSelectionRange)r.setSelectionRange(l,l);}});
   const es=document.getElementById("ex-search");
@@ -504,7 +510,7 @@ function renderPRs(el){
 }
 
 // CARDIO
-let cardioState={type:"Running",dist:"",du:"mi",h:"",m:"",s:"",course:"",date:tk(),saved:false,notes:""};
+let cardioState={type:"Running",dist:"",du:"mi",h:"",m:"",s:"",course:"",date:tk(),saved:false,notes:"",sportHow:"",sportLearn:"",sportWork:""};
 function renderCardio(el){
   const SPORTS=["Tennis","Basketball","Soccer","Football","Baseball","Volleyball","Pickleball","Golf"];
   const isSport=SPORTS.includes(cardioState.type);
@@ -528,9 +534,18 @@ function renderCardio(el){
       <div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Secs</div><input type="number" id="c-s" value="${cardioState.s}" placeholder="0" style="margin-bottom:0;text-align:center"></div>
     </div>
     ${lp?`<div style="background:rgba(255,60,0,0.05);border:1px solid rgba(255,60,0,0.1);border-radius:5px;padding:7px 11px;margin-bottom:9px;font-size:12px;color:#555">Pace: <b style="color:${O}">${lp.toFixed(2)}</b> min/${cardioState.du}</div>`:""}
-    <div class="lbl">Course</div><input id="c-course" value="${cardioState.course}" placeholder="Central Park, Treadmill..." style="margin-bottom:9px">
-    <div class="lbl" style="margin-top:2px">Notes</div>
-    <textarea id="c-notes" placeholder="How did it go?" rows="3" style="width:100%;background:#0f0f18;border:1px solid #222;border-radius:7px;color:#e8e8e8;padding:8px 10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;margin-bottom:9px">${cardioState.notes}</textarea>
+    <div class="lbl">${isSport?"Place":"Course"}</div><input id="c-course" value="${cardioState.course}" placeholder="${isSport?'Tennis club, park court...':`Central Park, Treadmill...`}" style="margin-bottom:9px">
+    ${isSport?`
+    <div class="lbl" style="margin-top:2px">How did it go? <span style="color:#333;font-size:9px">(optional)</span></div>
+    <textarea id="c-sport-how" placeholder="Score, performance, energy level..." rows="2" style="width:100%;background:#0f0f18;border:1px solid #222;border-radius:7px;color:#e8e8e8;padding:8px 10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;margin-bottom:9px">${cardioState.sportHow}</textarea>
+    <div class="lbl">What did you learn? <span style="color:#333;font-size:9px">(optional)</span></div>
+    <textarea id="c-sport-learn" placeholder="Technique, tactics, insights..." rows="2" style="width:100%;background:#0f0f18;border:1px solid #222;border-radius:7px;color:#e8e8e8;padding:8px 10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;margin-bottom:9px">${cardioState.sportLearn}</textarea>
+    <div class="lbl">What to work on? <span style="color:#333;font-size:9px">(optional)</span></div>
+    <textarea id="c-sport-work" placeholder="Areas to improve next session..." rows="2" style="width:100%;background:#0f0f18;border:1px solid #222;border-radius:7px;color:#e8e8e8;padding:8px 10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;margin-bottom:9px">${cardioState.sportWork}</textarea>
+    `:`
+    <div class="lbl" style="margin-top:2px">Notes <span style="color:#333;font-size:9px">(optional)</span></div>
+    <textarea id="c-notes" placeholder="Any notes about this session..." rows="3" style="width:100%;background:#0f0f18;border:1px solid #222;border-radius:7px;color:#e8e8e8;padding:8px 10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;margin-bottom:9px">${cardioState.notes}</textarea>
+    `}
     <button class="pbtn" onclick="saveCardio()" style="opacity:1">Save Activity</button>
   </div>
   ${D().cl.length?`<div class="lbl" style="margin-top:4px">History</div>${D().cl.map(c=>`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><div><b style="font-size:13px">${c.type}</b><div style="font-size:10px;color:#555">${fd(new Date(c.date+"T12:00:00").toISOString())}${c.course?" · "+c.course:""}</div></div><button onclick="deleteCardio('${c.id}')" style="background:none;border:none;color:#555;font-size:13px;cursor:pointer">🗑</button></div><div>${c.dist?`<span class="tag">📍${c.dist}${c.du}</span>`:""} ${c.ts>0?`<span class="tag">⏱${c.h&&c.h!=="0"?c.h+"h ":""}${c.m&&c.m!=="0"?c.m+"m ":""}${c.s&&c.s!=="0"?c.s+"s":""}</span>`:""} ${c.pace?`<span class="tag" style="background:rgba(255,60,0,0.1);color:${O}">🏃 ${c.pace}min/${c.du}</span>`:""}</div></div>`).join("")}`:""}`;
@@ -547,8 +562,8 @@ function saveCardio(){
   const isSportSave=SPORTS_LIST.includes(cardioState.type);
   const ts=(parseInt(cardioState.h)||0)*3600+(parseInt(cardioState.m)||0)*60+(parseInt(cardioState.s)||0);
   const pace=cardioState.dist&&ts&&!isSportSave?((ts/60)/parseFloat(cardioState.dist)).toFixed(2):null;
-  D().cl.unshift({id:String(Date.now()),date:cardioState.date,type:cardioState.type,dist:isSportSave?"":cardioState.dist,notes:cardioState.notes,du:cardioState.du,h:cardioState.h,m:cardioState.m,s:cardioState.s,ts,pace,course:cardioState.course});
-  cardioState.dist="";cardioState.h="";cardioState.m="";cardioState.s="";cardioState.course="";cardioState.notes="";cardioState.date=tk();cardioState.saved=true;
+  D().cl.unshift({id:String(Date.now()),date:cardioState.date,type:cardioState.type,dist:isSportSave?"":cardioState.dist,notes:cardioState.notes,sportHow:cardioState.sportHow,sportLearn:cardioState.sportLearn,sportWork:cardioState.sportWork,du:cardioState.du,h:cardioState.h,m:cardioState.m,s:cardioState.s,ts,pace,course:cardioState.course});
+  cardioState.dist="";cardioState.h="";cardioState.m="";cardioState.s="";cardioState.course="";cardioState.notes="";cardioState.sportHow="";cardioState.sportLearn="";cardioState.sportWork="";cardioState.date=tk();cardioState.saved=true;
   save();renderCardio(document.getElementById("content"));
   setTimeout(()=>{cardioState.saved=false;renderCardio(document.getElementById("content"));},2500);
 }
@@ -558,8 +573,8 @@ function deleteCardio(id){if(!confirm("Delete this activity?"))return;D().cl=D()
 function renderProtein(el){
   const today=D().pr[tk()]||0;const goal=parseInt(D().pg)||150;const pct=Math.min((today/goal)*100,100);
   if(!D().meals)profiles[activeProfile].meals={};
-  const todayMeals=D().meals[tk()]||{breakfast:[],lunch:[],dinner:[]};
-  const mealProtein=m=>todayMeals[m].reduce((a,f)=>a+(parseInt(f.protein)||0),0);
+  const todayMeals=D().meals[tk()]||{breakfast:[],lunch:[],dinner:[],snacks:[]};
+  const mealProtein=m=>(todayMeals[m]||[]).reduce((a,f)=>a+(parseInt(f.protein)||0),0);
   const totalMealProt=mealProtein("breakfast")+mealProtein("lunch")+mealProtein("dinner")+mealProtein("snacks");
 
   el.innerHTML=`
@@ -601,7 +616,7 @@ function renderProtein(el){
 
   <!-- Meals -->
   ${["breakfast","lunch","dinner","snacks"].map(meal=>{
-    const mealItems=todayMeals[meal]||[];
+    const mealItems=(todayMeals[meal])||[];
     const mealProt=mealProtein(meal);
     const emoji=meal==="breakfast"?"🌅":meal==="lunch"?"☀️":"🌙";
     return`<div class="card" style="margin-bottom:9px">
@@ -936,7 +951,7 @@ function renderJournal(el){
 
   <div class="card" style="margin-bottom:10px">
     <div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Today's Note</div>
-    <textarea id="journal-input" placeholder="How did your session go? Performance, score, goals..." rows="4" style="width:100%;background:#0f0f18;border:1px solid #222;border-radius:7px;color:#e8e8e8;padding:8px 10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;margin-bottom:9px">${(D().journals||{})[today]||""}</textarea>
+    <textarea id="journal-input" placeholder="How did it go? What did you learn? What do you want to work on next time?" rows="4" style="width:100%;background:#0f0f18;border:1px solid #222;border-radius:7px;color:#e8e8e8;padding:8px 10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;margin-bottom:9px">${(D().journals||{})[today]||""}</textarea>
     <button onclick="saveJournalEntry()" class="pbtn">Save Note</button>
   </div>
 
@@ -951,7 +966,13 @@ function renderJournal(el){
       </div>
       ${c.ts>0?`<span class="tag">⏱${c.h&&c.h!=="0"?c.h+"h ":""}${c.m&&c.m!=="0"?c.m+"m ":""}${c.s&&c.s!=="0"?c.s+"s":""}</span>`:""}
     </div>
-    ${c.notes?`<div style="font-size:12px;color:#aaa;font-style:italic;background:#0f0f18;border-radius:6px;padding:8px 10px">"${c.notes}"</div>`:`<div style="font-size:11px;color:#333;font-style:italic">No notes for this session</div>`}
+    ${c.sportHow||c.sportLearn||c.sportWork?`
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+      ${c.sportHow?`<div style="background:#0f0f18;border-radius:6px;padding:8px 10px"><div style="font-size:9px;color:#ff3c00;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">How it went</div><div style="font-size:12px;color:#ccc">${c.sportHow}</div></div>`:""}
+      ${c.sportLearn?`<div style="background:#0f0f18;border-radius:6px;padding:8px 10px"><div style="font-size:9px;color:#ffa000;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">What I learned</div><div style="font-size:12px;color:#ccc">${c.sportLearn}</div></div>`:""}
+      ${c.sportWork?`<div style="background:#0f0f18;border-radius:6px;padding:8px 10px"><div style="font-size:9px;color:#6496ff;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Work on</div><div style="font-size:12px;color:#ccc">${c.sportWork}</div></div>`:""}
+    </div>
+    `:`<div style="font-size:11px;color:#333;font-style:italic">No notes for this session</div>`}
   </div>`).join("")}`:`<div style="color:#555;text-align:center;padding:24px 0;font-size:13px">No sport sessions yet — log one in Cardio 🎾</div>`}
 
   ${Object.keys(D().journals||{}).length?`

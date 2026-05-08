@@ -140,7 +140,7 @@ function updateStreak(){const str=calcStreak();const sb=document.getElementById(
 
 // DASHBOARD
 function renderDash(el){
-  const tw=D().wos.filter(w=>(new Date()-new Date(w.date))/864e5<7).length;
+  const tw=D().wos.filter(w=>(new Date()-new Date(w.date))/864e5<7).length+D().cl.filter(c=>(new Date()-new Date(c.date+"T12:00:00"))/864e5<7).length;
   const tv=D().wos.reduce((a,w)=>a+w.sets.reduce((b,s)=>b+(parseFloat(s.w)||0)*(parseFloat(s.r)||0),0),0);
   const str=calcStreak();
   const l7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));const ds=d.toDateString();const k=d.toISOString().split("T")[0];return{lb:d.toLocaleDateString("en-US",{weekday:"short"}),ct:D().wos.filter(w=>new Date(w.date).toDateString()===ds).length+D().cl.filter(c=>c.date===k).length,k};});
@@ -197,7 +197,7 @@ function renderDash(el){
     </div>
     <div class="dash-card" style="background:linear-gradient(135deg,#1a0d00,#2a1500);border:1px solid rgba(255,160,0,0.25);border-radius:12px;padding:14px">
       <div style="font-size:10px;color:rgba(255,160,0,0.6);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">Total Workouts</div>
-      <div class="dash-num" style="font-size:36px;font-weight:900;color:#ffa000;line-height:1">${D().wos.length}</div>
+      <div class="dash-num" style="font-size:36px;font-weight:900;color:#ffa000;line-height:1">${D().wos.length+D().cl.length}</div>
       <div style="font-size:10px;color:rgba(255,160,0,0.4);margin-top:2px">all time</div>
     </div>
     <div class="dash-card" style="background:linear-gradient(135deg,#1a001a,#2a002a);border:1px solid rgba(200,0,200,0.25);border-radius:12px;padding:14px">

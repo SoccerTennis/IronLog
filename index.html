@@ -89,12 +89,12 @@ const EX={
   "Full Body":["Barbell Clean","Power Clean","Hang Clean","Snatch","Clean and Jerk","Kettlebell Swing","Kettlebell Clean and Press","Thruster","Burpee","Man Maker","Devil Press","Turkish Get-Up","Farmer Carry","Sled Push","Sled Pull","Battle Ropes","Box Jump","Medicine Ball Slam","Wall Ball","Tire Flip"],
   Mobility:["Hip Flexor Stretch","Pigeon Pose","Figure Four Stretch","Hamstring Stretch","Quad Stretch","Calf Stretch","Chest Opener","Lat Stretch","Shoulder Stretch","Neck Rolls","Thoracic Rotation","Cat Cow","Child Pose","Downward Dog","Cobra Stretch","90/90 Hip Stretch","World Greatest Stretch","Ankle Circles","Wrist Circles","Foam Roll Quads","Foam Roll IT Band","Foam Roll Thoracic","Foam Roll Calves","Inchworm","Scorpion Stretch"]
 };
-const TABS=["Dashboard","Weights","Cardio","My Plans","Progress","Protein","PRs","History"];
+const TABS=["Dashboard","Weights","Cardio","My Plans","Progress","Food","PRs","History","Journal"];
 const O="#ff3c00";
 const fd=d=>new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
 const ft=d=>new Date(d).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
 const tk=()=>new Date().toISOString().split("T")[0];
-const newData=()=>({wos:[],prs:{},pr:{},bw:{},rd:[],cx:{},cl:[],ht:"",hu:"ft",pg:"150",templates:[]});
+const newData=()=>({wos:[],prs:{},pr:{},bw:{},rd:[],cx:{},cl:[],ht:"",hu:"ft",pg:"150",templates:[],meals:{}});
 
 let profiles=[newData(),newData()];
 let profileNames=["User 1","User 2"];
@@ -165,7 +165,7 @@ function renderDash(el){
     @keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
     .dash-num{animation:countUp 0.5s ease forwards}
     .dash-card{animation:slideIn 0.3s ease forwards}
-    .streak-fire{animation:pulse2 1.5s ease infinite}
+    
     .shimmer-bar{background:linear-gradient(90deg,#ff3c00 0%,#ff6b00 40%,#ff3c00 80%);background-size:200% 100%;animation:shimmer 2s linear infinite}
   </style>
 
@@ -179,7 +179,7 @@ function renderDash(el){
   ${str>0?`<div class="dash-card" style="background:linear-gradient(135deg,#1a0800 0%,#2d0f00 50%,#1a0800 100%);border:1px solid rgba(255,60,0,0.4);border-radius:14px;padding:18px;margin-bottom:12px;position:relative;overflow:hidden">
     <div style="position:absolute;top:-20px;right:-20px;font-size:80px;opacity:0.08">🔥</div>
     <div style="font-size:11px;color:rgba(255,120,0,0.7);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px">Current Streak</div>
-    <div class="streak-fire" style="font-size:52px;font-weight:900;color:#ff3c00;line-height:1;margin-bottom:4px">${str}<span style="font-size:20px"> days</span></div>
+    <div style="font-size:52px;font-weight:900;color:#ff3c00;line-height:1;margin-bottom:4px">${str}<span style="font-size:20px"> days</span></div>
     <div style="font-size:11px;color:rgba(255,120,0,0.5)">Keep it going — don't break the chain 🔥</div>
   </div>`:""}
 
@@ -350,6 +350,8 @@ function renderLog(el){
     const r=document.getElementById("global-search");
     if(r){r.focus();const l=r.value?.length||0;if(r.setSelectionRange)r.setSelectionRange(l,l);}
   });
+  const cn=document.getElementById("c-notes");
+  if(cn)cn.addEventListener("input",e=>{cardioState.notes=e.target.value;});
   const ms=document.getElementById("muscle-search");
   if(ms)ms.addEventListener("input",e=>{logState.muscleSearch=e.target.value;const ae=document.activeElement?.id;renderLog(el);const r=document.getElementById(ae);if(r){r.focus();const l=r.value?.length||0;if(r.setSelectionRange)r.setSelectionRange(l,l);}});
   const es=document.getElementById("ex-search");
@@ -473,6 +475,7 @@ function renderHistory(el){
               </div>
             </div>
           </div>`).join("")}
+${buildMealCard(dk)}
         </div>`;
       }).join(""):""}
     </div>`;
@@ -501,7 +504,7 @@ function renderPRs(el){
 }
 
 // CARDIO
-let cardioState={type:"Running",dist:"",du:"mi",h:"",m:"",s:"",course:"",date:tk(),saved:false};
+let cardioState={type:"Running",dist:"",du:"mi",h:"",m:"",s:"",course:"",date:tk(),saved:false,notes:""};
 function renderCardio(el){
   const SPORTS=["Tennis","Basketball","Soccer","Football","Baseball","Volleyball","Pickleball","Golf"];
   const isSport=SPORTS.includes(cardioState.type);
@@ -526,6 +529,8 @@ function renderCardio(el){
     </div>
     ${lp?`<div style="background:rgba(255,60,0,0.05);border:1px solid rgba(255,60,0,0.1);border-radius:5px;padding:7px 11px;margin-bottom:9px;font-size:12px;color:#555">Pace: <b style="color:${O}">${lp.toFixed(2)}</b> min/${cardioState.du}</div>`:""}
     <div class="lbl">Course</div><input id="c-course" value="${cardioState.course}" placeholder="Central Park, Treadmill..." style="margin-bottom:9px">
+    <div class="lbl" style="margin-top:2px">Notes</div>
+    <textarea id="c-notes" placeholder="How did it go?" rows="3" style="width:100%;background:#0f0f18;border:1px solid #222;border-radius:7px;color:#e8e8e8;padding:8px 10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;margin-bottom:9px">${cardioState.notes}</textarea>
     <button class="pbtn" onclick="saveCardio()" style="opacity:1">Save Activity</button>
   </div>
   ${D().cl.length?`<div class="lbl" style="margin-top:4px">History</div>${D().cl.map(c=>`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><div><b style="font-size:13px">${c.type}</b><div style="font-size:10px;color:#555">${fd(new Date(c.date+"T12:00:00").toISOString())}${c.course?" · "+c.course:""}</div></div><button onclick="deleteCardio('${c.id}')" style="background:none;border:none;color:#555;font-size:13px;cursor:pointer">🗑</button></div><div>${c.dist?`<span class="tag">📍${c.dist}${c.du}</span>`:""} ${c.ts>0?`<span class="tag">⏱${c.h&&c.h!=="0"?c.h+"h ":""}${c.m&&c.m!=="0"?c.m+"m ":""}${c.s&&c.s!=="0"?c.s+"s":""}</span>`:""} ${c.pace?`<span class="tag" style="background:rgba(255,60,0,0.1);color:${O}">🏃 ${c.pace}min/${c.du}</span>`:""}</div></div>`).join("")}`:""}`;
@@ -542,8 +547,8 @@ function saveCardio(){
   const isSportSave=SPORTS_LIST.includes(cardioState.type);
   const ts=(parseInt(cardioState.h)||0)*3600+(parseInt(cardioState.m)||0)*60+(parseInt(cardioState.s)||0);
   const pace=cardioState.dist&&ts&&!isSportSave?((ts/60)/parseFloat(cardioState.dist)).toFixed(2):null;
-  D().cl.unshift({id:String(Date.now()),date:cardioState.date,type:cardioState.type,dist:isSportSave?"":cardioState.dist,du:cardioState.du,h:cardioState.h,m:cardioState.m,s:cardioState.s,ts,pace,course:cardioState.course});
-  cardioState.dist="";cardioState.h="";cardioState.m="";cardioState.s="";cardioState.course="";cardioState.date=tk();cardioState.saved=true;
+  D().cl.unshift({id:String(Date.now()),date:cardioState.date,type:cardioState.type,dist:isSportSave?"":cardioState.dist,notes:cardioState.notes,du:cardioState.du,h:cardioState.h,m:cardioState.m,s:cardioState.s,ts,pace,course:cardioState.course});
+  cardioState.dist="";cardioState.h="";cardioState.m="";cardioState.s="";cardioState.course="";cardioState.notes="";cardioState.date=tk();cardioState.saved=true;
   save();renderCardio(document.getElementById("content"));
   setTimeout(()=>{cardioState.saved=false;renderCardio(document.getElementById("content"));},2500);
 }
@@ -552,35 +557,125 @@ function deleteCardio(id){if(!confirm("Delete this activity?"))return;D().cl=D()
 // PROTEIN
 function renderProtein(el){
   const today=D().pr[tk()]||0;const goal=parseInt(D().pg)||150;const pct=Math.min((today/goal)*100,100);
+  if(!D().meals)profiles[activeProfile].meals={};
+  const todayMeals=D().meals[tk()]||{breakfast:[],lunch:[],dinner:[]};
+  const mealProtein=m=>todayMeals[m].reduce((a,f)=>a+(parseInt(f.protein)||0),0);
+  const totalMealProt=mealProtein("breakfast")+mealProtein("lunch")+mealProtein("dinner");
+
   el.innerHTML=`
-  <b class="h1">Protein 🥦</b>
-  <div class="card" style="margin-bottom:9px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-      <span class="lbl" style="margin-bottom:0">Today</span>
-      ${today>0?`<button onclick="resetProtein()" style="background:none;border:1px solid #1e1e2e;border-radius:4px;color:#555;font-size:10px;padding:2px 7px">Reset</button>`:""}
+  <b style="font-size:16px;letter-spacing:2px;text-transform:uppercase;color:#ff3c00;display:block;margin-bottom:12px">Food 🥦</b>
+
+  <!-- Daily protein summary -->
+  <div class="card" style="margin-bottom:9px;background:linear-gradient(135deg,#0a0f0a,#0d1a0d);border:1px solid rgba(0,200,83,0.2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div>
+        <div style="font-size:10px;color:rgba(0,200,83,0.6);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:3px">Total Protein Today</div>
+        <div style="font-size:36px;font-weight:900;color:${pct>=100?"#00c853":"#e8e8e8"};line-height:1">${today}<span style="font-size:13px;color:#555;font-weight:400"> / ${goal}g</span></div>
+      </div>
+      <div style="font-size:22px;font-weight:900;color:${pct>=100?"#00c853":"#555"}">${Math.round(pct)}%</div>
     </div>
-    <b style="font-size:38px;color:${today>0?O:"#555"};display:block;margin-bottom:3px">${today}<span style="font-size:13px;color:#555"> g</span></b>
-    <div style="font-size:11px;color:#555;margin-bottom:9px">Goal: ${D().pg}g · ${Math.max(0,goal-today)}g left</div>
-    <div style="height:5px;background:#1a1a1a;border-radius:4px;overflow:hidden;margin-bottom:9px"><div style="height:100%;border-radius:4px;background:${O};width:${pct}%;transition:width .4s"></div></div>
-    <div style="display:flex;gap:6px"><input type="number" id="prot-input" placeholder="Add grams..." style="flex:1;margin-bottom:0"><button class="pbtn sm" onclick="addProtein()">ADD</button></div>
+    <div style="height:7px;background:#1a1a1a;border-radius:8px;overflow:hidden;margin-bottom:6px">
+      <div style="height:100%;border-radius:8px;background:${pct>=100?"#00c853":"#ff3c00"};width:${pct}%;transition:width .6s ease"></div>
+    </div>
+    <div style="font-size:10px;color:${pct>=100?"#00c853":"#555"}">${pct>=100?"✅ Goal crushed!":Math.max(0,goal-today)+"g remaining"}</div>
   </div>
+
+  <!-- Quick add protein -->
   <div class="card" style="margin-bottom:9px">
-    <div class="lbl">Daily Goal (g)</div>
-    <div style="display:flex;gap:6px"><input type="number" id="pg-input" value="${D().pg}" placeholder="150" style="flex:1;margin-bottom:0"><div style="padding:8px 10px;background:rgba(255,60,0,0.1);border:1px solid rgba(255,60,0,0.2);border-radius:7px;font-size:10px;color:${O};font-weight:700;display:flex;align-items:center">g/day</div></div>
+    <div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Quick Add Protein</div>
+    <div style="display:flex;gap:6px">
+      <input type="number" id="prot-input" placeholder="Add grams..." style="flex:1;margin-bottom:0">
+      <button class="pbtn sm" onclick="addProtein()">ADD</button>
+      ${today>0?`<button onclick="resetProtein()" style="padding:8px 10px;background:none;border:1px solid #1e1e2e;border-radius:7px;color:#555;font-size:11px;cursor:pointer">Reset</button>`:""}
+    </div>
   </div>
+
+  <!-- Goal setting -->
+  <div class="card" style="margin-bottom:9px">
+    <div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Daily Goal</div>
+    <div style="display:flex;gap:6px">
+      <input type="number" id="pg-input" value="${D().pg}" placeholder="150" style="flex:1;margin-bottom:0">
+      <div style="padding:8px 10px;background:rgba(255,60,0,0.1);border:1px solid rgba(255,60,0,0.2);border-radius:7px;font-size:10px;color:#ff3c00;font-weight:700;display:flex;align-items:center">g/day</div>
+    </div>
+  </div>
+
+  <!-- Meals -->
+  ${["breakfast","lunch","dinner"].map(meal=>{
+    const mealItems=todayMeals[meal]||[];
+    const mealProt=mealProtein(meal);
+    const emoji=meal==="breakfast"?"🌅":meal==="lunch"?"☀️":"🌙";
+    return`<div class="card" style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <b style="font-size:13px;text-transform:capitalize">${emoji} ${meal}</b>
+        ${mealProt>0?`<span style="font-size:11px;color:#ff3c00;font-weight:700">${mealProt}g protein</span>`:""}
+      </div>
+      ${mealItems.length?`<div style="margin-bottom:8px">${mealItems.map((f,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #1a1a1a">
+        <span style="font-size:12px;color:#ccc">${f.name}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${f.protein?`<span style="font-size:11px;color:#ff3c00">${f.protein}g</span>`:""}
+          <button onclick="removeMealItem('${meal}',${i})" style="background:none;border:none;color:#333;font-size:11px;cursor:pointer">✕</button>
+        </div>
+      </div>`).join("")}</div>`:""}
+      <div style="display:flex;gap:5px">
+        <input id="food-${meal}" placeholder="Food item..." style="flex:2;margin-bottom:0;font-size:12px">
+        <input type="number" id="prot-${meal}" placeholder="g protein" style="flex:1;margin-bottom:0;font-size:12px">
+        <button onclick="addMealItem('${meal}')" style="padding:8px 10px;background:#ff3c00;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Add</button>
+        ${mealItems.length?`<button onclick="clearMeal('${meal}')" style="padding:8px 10px;background:none;border:1px solid #333;border-radius:7px;color:#555;font-size:11px;cursor:pointer;white-space:nowrap">Clear</button>`:""}
+      </div>
+    </div>`;
+  }).join("")}
+
+  <!-- 7 day protein history -->
   <div class="card">
-    <div class="lbl">Last 7 Days</div>
-    ${Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));const k=d.toISOString().split("T")[0];const g=D().pr[k]||0;const isT=k===tk();return`<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><div style="font-size:10px;color:${isT?O:"#555"};width:24px;text-align:right;font-weight:${isT?700:400}">${d.toLocaleDateString("en-US",{weekday:"short"})}</div><div style="flex:1;height:14px;background:#0f0f18;border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:${isT?O:g>=goal?"#00c853":"#333"};width:${g?Math.min((g/goal)*100,100):0}%;transition:width .4s"></div></div><div style="font-size:10px;color:${g?"#e8e8e8":"#555"};width:32px;text-align:right">${g?g+"g":"-"}</div></div>`;}).join("")}
+    <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px">Last 7 Days</div>
+    ${Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));const k=d.toISOString().split("T")[0];const g=D().pr[k]||0;const isT=k===tk();
+      return`<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+        <div style="font-size:10px;color:${isT?"#ff3c00":"#555"};width:24px;text-align:right;font-weight:${isT?700:400}">${d.toLocaleDateString("en-US",{weekday:"short"})}</div>
+        <div style="flex:1;height:14px;background:#0f0f18;border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:${isT?"#ff3c00":g>=goal?"#00c853":"#333"};width:${g?Math.min((g/goal)*100,100):0}%;transition:width .4s"></div></div>
+        <div style="font-size:10px;color:${g?"#e8e8e8":"#555"};width:32px;text-align:right">${g?g+"g":"-"}</div>
+      </div>`;
+    }).join("")}
   </div>`;
+
   const pi=document.getElementById("prot-input");if(pi)pi.addEventListener("keydown",e=>{if(e.key==="Enter")addProtein();});
-  const pgi=document.getElementById("pg-input");if(pgi)pgi.addEventListener("input",e=>{D().pg=e.target.value;save();
-    // Update progress bar live without full re-render
-    const newGoal=parseInt(e.target.value)||150;const newPct=Math.min((today/newGoal)*100,100);
-    const bar=document.querySelector("#content .bar-fill-prot");if(bar)bar.style.width=newPct+"%";
-  });
+  const pgi=document.getElementById("pg-input");if(pgi)pgi.addEventListener("input",e=>{D().pg=e.target.value;save();});
 }
+
 function addProtein(){const v=parseInt(document.getElementById("prot-input")?.value)||0;if(!v)return;D().pr[tk()]=(D().pr[tk()]||0)+v;save();renderProtein(document.getElementById("content"));}
 function resetProtein(){if(!confirm("Reset today's protein?"))return;D().pr[tk()]=0;save();renderProtein(document.getElementById("content"));}
+
+function clearMeal(meal){
+  if(!confirm("Clear all items from "+meal+"?"))return;
+  if(!D().meals||!D().meals[tk()])return;
+  const items=D().meals[tk()][meal]||[];
+  const prot=items.reduce(function(a,f){return a+(parseInt(f.protein)||0);},0);
+  if(prot>0)D().pr[tk()]=Math.max(0,(D().pr[tk()]||0)-prot);
+  profiles[activeProfile].meals[tk()][meal]=[];
+  save();renderProtein(document.getElementById("content"));
+}
+
+function addMealItem(meal){
+  const nameEl=document.getElementById("food-"+meal);
+  const protEl=document.getElementById("prot-"+meal);
+  const name=(nameEl?.value||"").trim();
+  if(!name)return;
+  const protein=protEl?.value||"";
+  if(!profiles[activeProfile].meals)profiles[activeProfile].meals={};
+  if(!D().meals[tk()])profiles[activeProfile].meals[tk()]={breakfast:[],lunch:[],dinner:[]};
+  D().meals[tk()][meal].push({name,protein});
+  // Also add protein to daily total if specified
+  if(protein)D().pr[tk()]=(D().pr[tk()]||0)+(parseInt(protein)||0);
+  save();renderProtein(document.getElementById("content"));
+}
+
+function removeMealItem(meal,idx){if(!confirm("Remove this item?"))return;
+  if(!D().meals[tk()])return;
+  const item=D().meals[tk()][meal][idx];
+  // Remove protein from total
+  if(item?.protein)D().pr[tk()]=Math.max(0,(D().pr[tk()]||0)-(parseInt(item.protein)||0));
+  D().meals[tk()][meal].splice(idx,1);
+  save();renderProtein(document.getElementById("content"));
+}
 
 // PROGRESS
 function renderProgress(el){
@@ -679,26 +774,9 @@ ${bwV.length>1?`<div style="margin-top:4px"><div style="font-size:9px;color:#555
   </div>
 
   <div class="card" style="margin-bottom:9px">
-    <b style="font-size:12px;text-transform:uppercase;display:block;margin-bottom:4px">Strength Balance</b>
-    <div style="font-size:10px;color:#555;margin-bottom:10px">Based on your PRs — bigger = stronger</div>
-    ${!hasBalance?`<div style="color:#555;text-align:center;padding:20px 0;font-size:12px">Log PRs to see your balance chart</div>`:`
-    <div style="display:flex;justify-content:center">
-      <svg width="220" height="220" viewBox="0 0 220 220">
-        <!-- Grid circles -->
-        ${[0.25,0.5,0.75,1].map(l=>`<polygon points="${gridPoints(l)}" fill="none" stroke="#1e1e2e" stroke-width="1"/>`).join("")}
-        <!-- Axis lines -->
-        ${balanceMG.map((_,i)=>{const angle=(i/n)*Math.PI*2-Math.PI/2;return`<line x1="${cx2}" y1="${cy2}" x2="${cx2+r*Math.cos(angle)}" y2="${cy2+r*Math.sin(angle)}" stroke="#222" stroke-width="1"/>`;}).join("")}
-        <!-- Data polygon -->
-        <polygon points="${points.map(p=>`${p.x},${p.y}`).join(" ")}" fill="rgba(255,60,0,0.2)" stroke="#ff3c00" stroke-width="2"/>
-        <!-- Data points -->
-        ${points.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="3" fill="#ff3c00"/>`).join("")}
-        <!-- Labels -->
-        ${labelPoints.map(p=>`<text x="${p.x}" y="${p.y}" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="#888" font-family="-apple-system,sans-serif">${p.label}</text>`).join("")}
-      </svg>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px">
-      ${balanceMG.map((m,i)=>{const w=prWeights[i];return w>0?`<div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${O};flex-shrink:0"></div><span style="font-size:10px;color:#888">${m}</span><span style="font-size:10px;color:${O};margin-left:auto;font-weight:700">${w}</span></div>`:"";}).join("")}
-    </div>`}
+    <b style="font-size:12px;text-transform:uppercase;display:block;margin-bottom:4px">Strength Balance 💪</b>
+    <div style="font-size:10px;color:#555;margin-bottom:12px">Radar chart based on your PRs</div>
+${buildBalanceChart()}
   </div>
 
   <div class="card">
@@ -846,14 +924,130 @@ function loadTemplate(i){
   setTab("Weights");
 }
 
+function renderJournal(el){
+  const sportTypes=["Tennis","Basketball","Soccer","Football","Baseball","Volleyball","Pickleball","Golf"];
+  const sportSessions=D().cl.filter(c=>sportTypes.includes(c.type)).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const today=tk();
+  if(!D().journals)profiles[activeProfile].journals={};
+
+  el.innerHTML=`
+  <b style="font-size:16px;letter-spacing:2px;text-transform:uppercase;color:#ff3c00;display:block;margin-bottom:12px">Sports Journal 📓</b>
+
+  <div class="card" style="margin-bottom:10px">
+    <div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Today's Note</div>
+    <textarea id="journal-input" placeholder="How did your session go? Performance, score, goals..." rows="4" style="width:100%;background:#0f0f18;border:1px solid #222;border-radius:7px;color:#e8e8e8;padding:8px 10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;margin-bottom:9px">${(D().journals||{})[today]||""}</textarea>
+    <button onclick="saveJournalEntry()" class="pbtn">Save Note</button>
+  </div>
+
+  ${sportSessions.length?`
+  <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Recent Sport Sessions</div>
+  ${sportSessions.slice(0,10).map(c=>`
+  <div class="card" style="margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+      <div>
+        <b style="font-size:14px">${c.type}</b>
+        <div style="font-size:10px;color:#555;margin-top:2px">${fd(new Date(c.date+"T12:00:00").toISOString())}${c.course?" · "+c.course:""}</div>
+      </div>
+      ${c.ts>0?`<span class="tag">⏱${c.h&&c.h!=="0"?c.h+"h ":""}${c.m&&c.m!=="0"?c.m+"m ":""}${c.s&&c.s!=="0"?c.s+"s":""}</span>`:""}
+    </div>
+    ${c.notes?`<div style="font-size:12px;color:#aaa;font-style:italic;background:#0f0f18;border-radius:6px;padding:8px 10px">"${c.notes}"</div>`:`<div style="font-size:11px;color:#333;font-style:italic">No notes for this session</div>`}
+  </div>`).join("")}`:`<div style="color:#555;text-align:center;padding:24px 0;font-size:13px">No sport sessions yet — log one in Cardio 🎾</div>`}
+
+  ${Object.keys(D().journals||{}).length?`
+  <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;margin-top:4px">Past Journal Entries</div>
+  ${Object.entries(D().journals||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,10).map(([date,note])=>`
+  <div class="card" style="margin-bottom:7px">
+    <div style="font-size:11px;color:#ff3c00;font-weight:700;margin-bottom:5px">${fd(new Date(date+"T12:00:00").toISOString())}</div>
+    <div style="font-size:13px;color:#ccc;line-height:1.5">${note}</div>
+  </div>`).join("")}`:""}`;
+
+  const ji=document.getElementById("journal-input");
+  if(ji)ji.addEventListener("input",e=>{if(!profiles[activeProfile].journals)profiles[activeProfile].journals={};profiles[activeProfile].journals[today]=e.target.value;});
+}
+
+function saveJournalEntry(){
+  const v=document.getElementById("journal-input")?.value||"";
+  if(!profiles[activeProfile].journals)profiles[activeProfile].journals={};
+  profiles[activeProfile].journals[tk()]=v;
+  save();
+  const msg=document.createElement("div");msg.className="saved";msg.textContent="✅ Note saved!";
+  document.getElementById("content").prepend(msg);setTimeout(()=>msg.remove(),2000);
+}
+
+function buildMealCard(dk){
+  const dayMeals=((D().meals)||{})[dk];
+  if(!dayMeals)return"";
+  const hasMeals=["breakfast","lunch","dinner"].some(function(m){return dayMeals[m]&&dayMeals[m].length>0;});
+  if(!hasMeals)return"";
+  const mealEmoji={breakfast:"🌅",lunch:"☀️",dinner:"🌙"};
+  let html='<div class="card" style="margin-bottom:5px;border:1px solid rgba(0,200,83,0.15)"><div style="font-size:10px;color:rgba(0,200,83,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px">🥦 Food</div>';
+  var total=0;
+  ["breakfast","lunch","dinner"].forEach(function(meal){
+    const items=dayMeals[meal]||[];
+    if(!items.length)return;
+    const prot=items.reduce(function(a,f){return a+(parseInt(f.protein)||0);},0);
+    total+=prot;
+    html+='<div style="margin-bottom:5px"><span style="font-size:10px;color:#888;text-transform:capitalize">'+mealEmoji[meal]+" "+meal+'</span>';
+    if(prot>0)html+='<span style="font-size:10px;color:#ff3c00;font-weight:700;margin-left:6px">'+prot+'g</span>';
+    html+='<div style="margin-top:3px">';
+    items.forEach(function(f){html+='<span class="tag" style="font-size:9px">'+f.name+(f.protein?" ("+f.protein+"g)":"")+'</span>';});
+    html+='</div></div>';
+  });
+  if(total>0)html+='<div style="font-size:10px;color:#ff3c00;font-weight:700;margin-top:5px;border-top:1px solid #1e1e2e;padding-top:5px">Total protein: '+total+'g</div>';
+  html+='</div>';
+  return html;
+}
+
+function buildBalanceChart(){
+  const balMG=["Chest","Back","Shoulders","Biceps","Triceps","Quads","Hamstrings","Glutes","Calves","Core"];
+  const prW=balMG.map(function(m){
+    const ent=Object.entries(D().prs).filter(function(e){return e[1].muscle===m;});
+    if(!ent.length)return 0;
+    return Math.max.apply(null,ent.map(function(e){return e[1].weight||0;}));
+  });
+  const maxW=Math.max.apply(null,prW.concat([1]));
+  const norm=prW.map(function(w){return w/maxW;});
+  const hasData=prW.some(function(w){return w>0;});
+  if(!hasData)return '<div style="color:#555;text-align:center;padding:20px 0;font-size:12px">Log PRs to see your balance chart</div>';
+  const n=balMG.length;
+  const cx=120,cy=120,r=85;
+  function angle(i){return(i/n)*Math.PI*2-Math.PI/2;}
+  function sc(v){return v>=0.8?"#00c853":v>=0.5?"#ffa000":v>0?"#ff3c00":"#333";}
+  function gridPts(lv){return balMG.map(function(_,i){return (cx+r*lv*Math.cos(angle(i)))+","+(cy+r*lv*Math.sin(angle(i)));}).join(" ");}
+  const dataPts=norm.map(function(v,i){return {x:cx+r*v*Math.cos(angle(i)),y:cy+r*v*Math.sin(angle(i))};});
+  const lblPts=balMG.map(function(_,i){return {x:cx+(r+20)*Math.cos(angle(i)),y:cy+(r+20)*Math.sin(angle(i)),l:balMG[i],v:prW[i],n:norm[i]};});
+  
+  let svg='<div style="display:flex;justify-content:center"><svg width="240" height="240" viewBox="0 0 240 240">';
+  [0.25,0.5,0.75,1].forEach(function(lv){svg+='<polygon points="'+gridPts(lv)+'" fill="none" stroke="#1e1e2e" stroke-width="1"/>';});
+  balMG.forEach(function(_,i){svg+='<line x1="'+cx+'" y1="'+cy+'" x2="'+(cx+r*Math.cos(angle(i)))+'" y2="'+(cy+r*Math.sin(angle(i)))+'" stroke="#222" stroke-width="1"/>';});
+  svg+='<polygon points="'+dataPts.map(function(p){return p.x+","+p.y;}).join(" ")+'" fill="rgba(255,60,0,0.15)" stroke="#ff3c00" stroke-width="2"/>';
+  dataPts.forEach(function(p,i){svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="'+sc(norm[i])+'"/>';});
+  lblPts.forEach(function(p){svg+='<text x="'+p.x+'" y="'+p.y+'" text-anchor="middle" dominant-baseline="middle" font-size="7.5" fill="'+(p.v>0?sc(p.n):"#444")+'" font-family="-apple-system,sans-serif" font-weight="'+(p.v>0?700:400)+'">'+p.l+(p.v>0?" "+p.v:"")+"</text>";});
+  svg+='<text x="'+cx+'" y="'+cy+'" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="#555" font-family="-apple-system,sans-serif">Max: '+Math.round(maxW)+'</text>';
+  svg+='</svg></div>';
+  
+  let grid='<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px">';
+  balMG.forEach(function(m,i){if(prW[i]>0)grid+='<div style="display:flex;align-items:center;gap:5px"><div style="width:8px;height:8px;border-radius:50%;background:'+sc(norm[i])+';flex-shrink:0"></div><span style="font-size:9px;color:#888;flex:1">'+m+'</span><span style="font-size:9px;font-weight:700;color:'+sc(norm[i])+'">'+Math.round(norm[i]*100)+'%</span></div>';});
+  grid+='</div>';
+  
+  const legend='<div style="display:flex;gap:10px;margin-top:10px;justify-content:center">'
+    +'<div style="display:flex;align-items:center;gap:4px"><div style="width:7px;height:7px;border-radius:50%;background:#00c853"></div><span style="font-size:8px;color:#555">Strong (80%+)</span></div>'
+    +'<div style="display:flex;align-items:center;gap:4px"><div style="width:7px;height:7px;border-radius:50%;background:#ffa000"></div><span style="font-size:8px;color:#555">Moderate</span></div>'
+    +'<div style="display:flex;align-items:center;gap:4px"><div style="width:7px;height:7px;border-radius:50%;background:#ff3c00"></div><span style="font-size:8px;color:#555">Developing</span></div>'
+    +'</div>';
+  
+  return svg+grid+legend;
+}
+
 function renderContent(){
   const el=document.getElementById("content");
   if(tab==="Dashboard")renderDash(el);
   else if(tab==="Weights")renderLog(el);
   else if(tab==="History")renderHistory(el);
+  else if(tab==="Journal")renderJournal(el);
   else if(tab==="PRs")renderPRs(el);
   else if(tab==="Cardio")renderCardio(el);
-  else if(tab==="Protein")renderProtein(el);
+  else if(tab==="Food")renderProtein(el);
   else if(tab==="Progress")renderProgress(el);
   else if(tab==="My Plans")renderTools(el);
   updateStreak();

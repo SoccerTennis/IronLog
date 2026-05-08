@@ -560,7 +560,7 @@ function renderProtein(el){
   if(!D().meals)profiles[activeProfile].meals={};
   const todayMeals=D().meals[tk()]||{breakfast:[],lunch:[],dinner:[]};
   const mealProtein=m=>todayMeals[m].reduce((a,f)=>a+(parseInt(f.protein)||0),0);
-  const totalMealProt=mealProtein("breakfast")+mealProtein("lunch")+mealProtein("dinner");
+  const totalMealProt=mealProtein("breakfast")+mealProtein("lunch")+mealProtein("dinner")+mealProtein("snacks");
 
   el.innerHTML=`
   <b style="font-size:16px;letter-spacing:2px;text-transform:uppercase;color:#ff3c00;display:block;margin-bottom:12px">Food 🥦</b>
@@ -600,7 +600,7 @@ function renderProtein(el){
   </div>
 
   <!-- Meals -->
-  ${["breakfast","lunch","dinner"].map(meal=>{
+  ${["breakfast","lunch","dinner","snacks"].map(meal=>{
     const mealItems=todayMeals[meal]||[];
     const mealProt=mealProtein(meal);
     const emoji=meal==="breakfast"?"🌅":meal==="lunch"?"☀️":"🌙";
@@ -647,6 +647,7 @@ function resetProtein(){if(!confirm("Reset today's protein?"))return;D().pr[tk()
 function clearMeal(meal){
   if(!confirm("Clear all items from "+meal+"?"))return;
   if(!D().meals||!D().meals[tk()])return;
+  if(!D().meals[tk()][meal])D().meals[tk()][meal]=[];
   const items=D().meals[tk()][meal]||[];
   const prot=items.reduce(function(a,f){return a+(parseInt(f.protein)||0);},0);
   if(prot>0)D().pr[tk()]=Math.max(0,(D().pr[tk()]||0)-prot);
@@ -661,7 +662,7 @@ function addMealItem(meal){
   if(!name)return;
   const protein=protEl?.value||"";
   if(!profiles[activeProfile].meals)profiles[activeProfile].meals={};
-  if(!D().meals[tk()])profiles[activeProfile].meals[tk()]={breakfast:[],lunch:[],dinner:[]};
+  if(!D().meals[tk()])profiles[activeProfile].meals[tk()]={breakfast:[],lunch:[],dinner:[],snacks:[]};
   D().meals[tk()][meal].push({name,protein});
   // Also add protein to daily total if specified
   if(protein)D().pr[tk()]=(D().pr[tk()]||0)+(parseInt(protein)||0);
@@ -979,10 +980,10 @@ function buildMealCard(dk){
   if(!dayMeals)return"";
   const hasMeals=["breakfast","lunch","dinner"].some(function(m){return dayMeals[m]&&dayMeals[m].length>0;});
   if(!hasMeals)return"";
-  const mealEmoji={breakfast:"🌅",lunch:"☀️",dinner:"🌙"};
+  const mealEmoji={breakfast:"🌅",lunch:"☀️",dinner:"🌙",snacks:"🍎"};
   let html='<div class="card" style="margin-bottom:5px;border:1px solid rgba(0,200,83,0.15)"><div style="font-size:10px;color:rgba(0,200,83,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px">🥦 Food</div>';
   var total=0;
-  ["breakfast","lunch","dinner"].forEach(function(meal){
+  ["breakfast","lunch","dinner","snacks"].forEach(function(meal){
     const items=dayMeals[meal]||[];
     if(!items.length)return;
     const prot=items.reduce(function(a,f){return a+(parseInt(f.protein)||0);},0);

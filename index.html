@@ -296,7 +296,7 @@ function renderDash(el){
 
 // LOG
 let logState={muscle:"Chest",exercise:"",sets:[{r:"",w:"",u:"lbs"}],muscleSearch:"",exSearch:"",globalSearch:"",showCx:false,cxName:"",saved:false,date:tk(),planQueue:[],planSets:3,planReps:"10"};
-let planBuilder={name:"",exercises:[],search:"",searching:false};
+let planBuilder={name:"",exercises:[],search:"",searching:false,editingIdx:-1};
 function renderLog(el){
   const fMG=MG.filter(m=>m.toLowerCase().includes(logState.muscleSearch.toLowerCase()));
   const fEX=aE(logState.muscle).filter(e=>e.toLowerCase().includes(logState.exSearch.toLowerCase()));
@@ -425,7 +425,7 @@ function saveWo(){
   if(logState.planQueue&&logState.planQueue.length){
     const next=logState.planQueue.shift();
     logState.exercise=next;
-    logState.sets=Array.from({length:logState.planSets},function(){return{r:logState.planReps,w:"",u:"lbs"};});
+    const firstEx=exData[0];logState.sets=Array.from({length:firstEx?firstEx.sets:logState.planSets},function(){return{r:firstEx?firstEx.reps:logState.planReps,w:firstEx&&firstEx.weight?firstEx.weight:"",u:"lbs"};});
   } else {
     logState.exercise="";logState.sets=[{r:"",w:"",u:"lbs"}];
   }
@@ -1204,9 +1204,24 @@ function planAddEx(e,m){
 function planRemoveEx(i){planBuilder.exercises.splice(i,1);renderTools(document.getElementById("content"));}
 function planUpdateEx(i,field,val){planBuilder.exercises[i][field]=val;}
 
+function editPlan(i){
+  const t=D().templates[i];if(!t)return;
+  const exData=t.exerciseData||t.exercises.map(function(e){return{name:e,muscle:"",sets:t.sets||3,reps:t.reps||"10",weight:""};});
+  planBuilder={name:t.name,exercises:exData.map(function(e){return{name:e.name,muscle:e.muscle||"",sets:e.sets||3,reps:e.reps||"10",weight:e.weight||""};}),search:"",searching:false,editingIdx:i};
+  renderTools(document.getElementById("content"));
+  document.getElementById("content").scrollTo(0,0);
+}
+
+function savePlanEdit(){
+  if(!planBuilder.name||!planBuilder.exercises.length){alert("Add a name and at least one exercise.");return;}
+  D().templates[planBuilder.editingIdx]={name:planBuilder.name,exercises:planBuilder.exercises.map(function(e){return e.name;}),exerciseData:planBuilder.exercises.map(function(e){return{name:e.name,muscle:e.muscle,sets:e.sets,reps:e.reps,weight:e.weight};}),sets:3,reps:"10"};
+  planBuilder={name:"",exercises:[],search:"",searching:false,editingIdx:-1};
+  save();renderTools(document.getElementById("content"));
+}
+
 function savePlan(){
   if(!planBuilder.name||!planBuilder.exercises.length){alert("Add a name and at least one exercise.");return;}
-  D().templates.push({name:planBuilder.name,exercises:planBuilder.exercises.map(function(e){return e.name;}),exerciseData:planBuilder.exercises,sets:3,reps:"10"});
+  D().templates.push({name:planBuilder.name,exercises:planBuilder.exercises.map(function(e){return e.name;}),exerciseData:planBuilder.exercises.map(function(e){return{name:e.name,muscle:e.muscle,sets:e.sets,reps:e.reps,weight:e.weight||""};}),sets:3,reps:"10"});
   planBuilder={name:"",exercises:[],search:"",searching:false};
   save();renderTools(document.getElementById("content"));
 }
@@ -1214,11 +1229,11 @@ function savePlan(){
 function startPlanEditLog(i){
   const t=D().templates[i];if(!t)return;
   const exData=t.exerciseData||t.exercises.map(function(e){return{name:e,sets:t.sets||3,reps:t.reps||"10"};});
-  logState.planQueue=exData.slice(1).map(function(e){return e.name;});
+  logState.planQueue=exData.slice(1);
   logState.planSets=exData[0]?exData[0].sets:3;
   logState.planReps=exData[0]?exData[0].reps:"10";
   logState.exercise=exData[0]?exData[0].name:"";
-  logState.sets=Array.from({length:logState.planSets},function(){return{r:logState.planReps,w:"",u:"lbs"};});
+  const firstEx=exData[0];logState.sets=Array.from({length:firstEx?firstEx.sets:logState.planSets},function(){return{r:firstEx?firstEx.reps:logState.planReps,w:firstEx&&firstEx.weight?firstEx.weight:"",u:"lbs"};});
   setTab("Weights");
 }
 
@@ -1244,7 +1259,7 @@ function renderTools(el){
 
   <!-- Plan Builder -->
   <div class="card" style="margin-bottom:10px">
-    <b style="font-size:13px;text-transform:uppercase;display:block;margin-bottom:8px">Create Plan</b>
+    <b style="font-size:13px;text-transform:uppercase;display:block;margin-bottom:8px">${planBuilder.editingIdx>=0?"✏️ Edit Plan":"Create Plan"}</b>
     <input id="plan-name" value="${planBuilder.name}" placeholder="Plan name (e.g. Push Day)..." style="margin-bottom:8px">
 
     <!-- Exercise search -->
@@ -1273,11 +1288,13 @@ function renderTools(el){
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
           <div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:2px">Sets</div><input type="number" id="pex-sets-${i}" value="${ex.sets}" placeholder="3" style="margin-bottom:0;font-size:12px;padding:5px;text-align:center"></div>
           <div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:2px">Reps</div><input id="pex-reps-${i}" value="${ex.reps}" placeholder="10" style="margin-bottom:0;font-size:12px;padding:5px;text-align:center"></div>
+          <div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:2px">Wt <span style="color:#333">(opt)</span></div><input type="number" id="pex-wt-${i}" value="${ex.weight||''}" placeholder="lbs" style="margin-bottom:0;font-size:12px;padding:5px;text-align:center"></div>
         </div>
       </div>`).join("")}
     </div>`:""}
 
-    <button onclick="savePlan()" class="pbtn" ${planBuilder.name&&planBuilder.exercises.length?'':'disabled'} style="${planBuilder.name&&planBuilder.exercises.length?'':'opacity:0.4;cursor:not-allowed'}">Save Plan</button>
+    <button onclick="planBuilder.editingIdx>=0?savePlanEdit():savePlan()" class="pbtn" ${!planBuilder.name||!planBuilder.exercises.length?"disabled":""} style="opacity:${planBuilder.name&&planBuilder.exercises.length?1:0.4}">${planBuilder.editingIdx>=0?"Update Plan":"Save Plan"}</button>
+    ${planBuilder.editingIdx>=0?`<button onclick="planBuilder={name:'',exercises:[],search:'',searching:false,editingIdx:-1};renderTools(document.getElementById('content'))" style="width:100%;margin-top:6px;padding:9px;background:none;border:1px solid #333;border-radius:7px;color:#555;font-size:12px;cursor:pointer">Cancel Edit</button>`:""}
   </div>
 
   <!-- Saved plans -->
@@ -1288,12 +1305,15 @@ function renderTools(el){
     return`<div class="card" style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <b style="font-size:13px">${t.name}</b>
-        <button onclick="deleteTemplate(${i})" style="background:none;border:none;color:#555;font-size:13px;cursor:pointer">🗑</button>
+        <div style="display:flex;gap:5px">
+          <button onclick="editPlan(${i})" style="background:none;border:1px solid rgba(100,150,255,0.4);border-radius:5px;color:#6496ff;font-size:10px;padding:3px 8px;cursor:pointer">✏️ Edit Plan</button>
+          <button onclick="deleteTemplate(${i})" style="background:none;border:none;color:#555;font-size:13px;cursor:pointer">🗑</button>
+        </div>
       </div>
-      <div style="margin-bottom:8px">${exData.map(ex=>`<div style="font-size:11px;color:#888;margin-bottom:2px">• ${ex.name} — ${ex.sets||3}×${ex.reps||10}</div>`).join("")}</div>
+      <div style="margin-bottom:8px">${exData.map(ex=>`<div style="font-size:11px;color:#888;margin-bottom:2px">• ${ex.name} — ${ex.sets||3}×${ex.reps||10}${ex.weight?" @ "+ex.weight+"lbs":""}</div>`).join("")}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <button onclick="startPlanEditLog(${i})" style="padding:8px;background:none;border:1px solid #ff3c00;border-radius:7px;color:#ff3c00;font-size:11px;font-weight:700;cursor:pointer">✏️ Edit & Log</button>
-        <button onclick="startPlanAutoLog(${i})" style="padding:8px;background:#ff3c00;border:none;border-radius:7px;color:#fff;font-size:11px;font-weight:700;cursor:pointer">⚡ Auto-Log All</button>
+        <button onclick="startPlanEditLog(${i})" style="padding:8px;background:none;border:1px solid #ff3c00;border-radius:7px;color:#ff3c00;font-size:11px;font-weight:700;cursor:pointer">Edit & Log</button>
+        <button onclick="startPlanAutoLog(${i})" style="padding:8px;background:#ff3c00;border:none;border-radius:7px;color:#fff;font-size:11px;font-weight:700;cursor:pointer">⚡ Auto-Log</button>
       </div>
     </div>`;
   }).join("")}`:""}
@@ -1320,6 +1340,7 @@ function renderTools(el){
     const s=document.getElementById("pex-sets-"+i);const r=document.getElementById("pex-reps-"+i);
     if(s)s.addEventListener("input",function(e){planBuilder.exercises[i].sets=parseInt(e.target.value)||3;});
     if(r)r.addEventListener("input",function(e){planBuilder.exercises[i].reps=e.target.value;});
+    const wt2=document.getElementById("pex-wt-"+i);if(wt2)wt2.addEventListener("input",function(e){planBuilder.exercises[i].weight=e.target.value;});
   });
   const pt2=document.getElementById("plate-target");if(pt2)pt2.addEventListener("keydown",function(e){if(e.key==="Enter")calcPlateDisplay();});
 }

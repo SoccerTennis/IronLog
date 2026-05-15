@@ -762,7 +762,7 @@ function renderCardio(el){
     <div style="display:flex;gap:6px;margin-bottom:9px">
       <input type="number" id="c-dist" value="${cardioState.dist}" placeholder="0.0" style="flex:1;margin-bottom:0">
       <select id="c-du" style="margin-bottom:0;width:auto;padding:8px 7px"><option${cardioState.du==="mi"?" selected":""}>mi</option><option${cardioState.du==="km"?" selected":""}>km</option><option${cardioState.du==="m"?" selected":""}>m</option></select>
-    </div>
+    </div>`:``}
     <div class="lbl">Time</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:9px">
       <div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Hrs</div><input type="number" id="c-h" value="${cardioState.h}" placeholder="0" style="margin-bottom:0;text-align:center"></div>
@@ -770,7 +770,6 @@ function renderCardio(el){
       <div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Secs</div><input type="number" id="c-s" value="${cardioState.s}" placeholder="0" style="margin-bottom:0;text-align:center"></div>
     </div>
     ${lp?`<div style="background:rgba(255,60,0,0.05);border:1px solid rgba(255,60,0,0.1);border-radius:5px;padding:7px 11px;margin-bottom:9px;font-size:12px;color:#555">Pace: <b style="color:#ff3c00">${lp.toFixed(2)}</b> min/${cardioState.du}</div>`:""}
-    `:""}
 
     ${canInterval?`
     <button onclick="toggleIntervals()" style="width:100%;padding:7px;background:none;border:1px solid ${cardioState.showIntervals?'#ff3c00':'#1e1e2e'};border-radius:7px;color:${cardioState.showIntervals?'#ff3c00':'#555'};font-size:11px;font-weight:700;cursor:pointer;margin-bottom:${cardioState.showIntervals?8:9}px">
@@ -816,7 +815,7 @@ function renderCardio(el){
     <div>
       ${c.dist?`<span class="tag">📍${c.dist}${c.du}</span>`:""}
       ${c.intervals&&c.intervals.length?`<span class="tag">📊${c.intervals.length} intervals</span>`:""}
-      ${c.hiitRounds?`<span class="tag">⚡${c.hiitRounds}×(${c.hiitWork}s/${c.hiitRest}s)</span>`:""}
+      ${c.type==="HIIT"&&c.hiitRounds?`<span class="tag">⚡${c.hiitRounds}×(${c.hiitWork}s/${c.hiitRest}s)</span>`:""}
       ${c.ts>0?`<span class="tag">⏱${c.h&&c.h!=="0"?c.h+"h ":""}${c.m&&c.m!=="0"?c.m+"m ":""}${c.s&&c.s!=="0"?c.s+"s":""}</span>`:""}
       ${c.pace?`<span class="tag" style="background:rgba(255,60,0,0.1);color:#ff3c00">🏃${c.pace}/${c.du}</span>`:""}
     </div>
@@ -848,7 +847,7 @@ function saveCardio(){
   const SPORTS_LIST=["Tennis","Basketball","Soccer","Football","Baseball","Volleyball","Pickleball","Golf"];
   const isSportSave=SPORTS_LIST.includes(cardioState.type);
   const isHIITSave=cardioState.type==="HIIT";
-  const hasData=cardioState.dist||cardioState.m||cardioState.h||cardioState.intervals.length||(isHIITSave&&cardioState.hiitRounds);
+  const hasData=cardioState.dist||cardioState.m||cardioState.h||cardioState.s||cardioState.intervals.length||(isHIITSave&&cardioState.hiitRounds)||isSportSave;
   if(!hasData){alert("Please enter some activity data first.");return;}
   const ts=(parseInt(cardioState.h)||0)*3600+(parseInt(cardioState.m)||0)*60+(parseInt(cardioState.s)||0);
   const pace=cardioState.dist&&ts&&!isSportSave?((ts/60)/parseFloat(cardioState.dist)).toFixed(2):null;

@@ -484,14 +484,17 @@ function updateStreak(){const str=getCachedStreak();const sb=document.getElement
 
 // DASHBOARD
 function renderDash(el){
-  const twWos=(()=>{const seen=new Set();let n=0;D().wos.filter(w=>(new Date()-new Date(w.date))/864e5<7).forEach(w=>{if(w.sessionId){if(!seen.has(w.sessionId)){seen.add(w.sessionId);n++;}}else{n++;}});return n;})();
-  const tw=twWos+D().cl.filter(c=>(new Date()-new Date(c.date+"T12:00:00"))/864e5<7).length;
+  // "This Week" = current calendar week Mon–Sun
+  const getWeekStart=()=>{const d=new Date();const day=d.getDay();d.setDate(d.getDate()-(day===0?6:day-1));d.setHours(0,0,0,0);return d;};
+  const weekStart=getWeekStart();
+  const twWos=(()=>{const seen=new Set();let n=0;D().wos.filter(w=>new Date(w.date)>=weekStart).forEach(w=>{if(w.sessionId){if(!seen.has(w.sessionId)){seen.add(w.sessionId);n++;}}else{n++;}});return n;})();
+  const tw=twWos+D().cl.filter(c=>new Date(c.date+"T12:00:00")>=weekStart).length;
   const tv=D().wos.reduce((a,w)=>a+w.sets.reduce((b,s)=>b+(parseFloat(s.w)||0)*(parseFloat(s.r)||0),0),0);
   // Count sessions: plan exercises share a sessionId → count as 1; individual exercises each count as 1
   const sessionCount=(()=>{const seen=new Set();let n=0;D().wos.forEach(w=>{if(w.sessionId){if(!seen.has(w.sessionId)){seen.add(w.sessionId);n++;}}else{n++;}});return n+D().cl.length;})();
   const str=getCachedStreak();
   const l7=Array.from({length:7},(_,i)=>{
-    const d=new Date();d.setDate(d.getDate()-(6-i));
+    const d=new Date();d.setDate(d.getDate()-(6-i));d.setHours(0,0,0,0);
     const ds=d.toDateString();const k=d.toISOString().split("T")[0];
     // Count sessions (plan group = 1) not individual exercises
     const dayWos=D().wos.filter(w=>new Date(w.date).toDateString()===ds);
@@ -574,7 +577,7 @@ function renderDash(el){
     const seen=new Set();const items=[];
     all.forEach(a=>{
       if(a._t==="wo"&&a.sessionId){
-        if(!seen.has(a.sessionId)){seen.add(a.sessionId);const grp=all.filter(x=>x._t==="wo"&&x.sessionId===a.sessionId);items.push({_t:"plan",sessionId:a.sessionId,planName:a.planName||"Plan",count:grp.length,date:a.date,exercises:grp});}
+        if(!seen.has(a.sessionId)){seen.add(a.sessionId);const grp=all.filter(x=>x._t==="wo"&&x.sessionId===a.sessionId);items.push({_t:"plan",sessionId:a.sessionId,planName:a.planName||a.exercise||"Plan Session",count:grp.length,date:a.date,exercises:grp});}
       } else {items.push(a);}
     });
     return items.slice(0,4).map(a=>{
@@ -1283,7 +1286,7 @@ function renderHistory(el){
       const mon=new Date(wk+"T12:00:00");
       const sun=new Date(mon);sun.setDate(mon.getDate()+6);
       const isExpanded=histState.expanded[wk]!==false;
-      const woCount=items.filter(function(a){return a._t==="wo";}).length;
+      const woCount=(()=>{const seen=new Set();let n=0;items.filter(function(a){return a._t==="wo";}).forEach(function(w){if(w.sessionId){if(!seen.has(w.sessionId)){seen.add(w.sessionId);n++;}}else{n++;}});return n;})();
       const cCount=items.filter(function(a){return a._t==="c";}).length;
       const weekVol=items.filter(function(a){return a._t==="wo";}).reduce(function(acc,w){return acc+w.sets.reduce(function(b,s){return b+(parseFloat(s.w)||0)*(parseFloat(s.r)||0);},0);},0);
 
@@ -1308,8 +1311,8 @@ function renderHistory(el){
         dayKeys.forEach(function(dk){
           const dayItems=days[dk];
           const dayDate=new Date(dk+"T12:00:00");
-          const isDayExpanded=histState.expandedDays[dk]===true;
-          const dayWos=dayItems.filter(function(a){return a._t==="wo";}).length;
+          const isDayExpanded=histState.expandedDays[dk]!==false;
+          const dayWos=(()=>{const seen=new Set();let n=0;dayItems.filter(function(a){return a._t==="wo";}).forEach(function(w){if(w.sessionId){if(!seen.has(w.sessionId)){seen.add(w.sessionId);n++;}}else{n++;}});return n;})();
           const dayCar=dayItems.filter(function(a){return a._t==="c";}).length;
 
           html+=`<div style="margin-left:8px;margin-bottom:5px">
@@ -1327,7 +1330,7 @@ function renderHistory(el){
             const daySeen=new Set();const dayGrouped=[];
             dayItems.forEach(function(a){
               if(a._t==="wo"&&a.sessionId){
-                if(!daySeen.has(a.sessionId)){daySeen.add(a.sessionId);const grp=dayItems.filter(x=>x._t==="wo"&&x.sessionId===a.sessionId);dayGrouped.push({_t:"plangroup",sessionId:a.sessionId,planName:a.planName||"Plan",exercises:grp,date:a.date});}
+                if(!daySeen.has(a.sessionId)){daySeen.add(a.sessionId);const grp=dayItems.filter(x=>x._t==="wo"&&x.sessionId===a.sessionId);dayGrouped.push({_t:"plangroup",sessionId:a.sessionId,planName:a.planName||a.exercise||"Plan Session",exercises:grp,date:a.date});}
               } else {dayGrouped.push(a);}
             });
             dayGrouped.forEach(function(a){
@@ -1940,8 +1943,10 @@ function exportCSV(){
 
 function getWeeklySummary(){
   const now=new Date();
-  const thisWeek=D().wos.filter(w=>(now-new Date(w.date))/864e5<7);
-  const lastWeek=D().wos.filter(w=>{const d=(now-new Date(w.date))/864e5;return d>=7&&d<14;});
+  const weekStart=(()=>{const d=new Date();const day=d.getDay();d.setDate(d.getDate()-(day===0?6:day-1));d.setHours(0,0,0,0);return d;})();
+  const lastWeekStart=new Date(weekStart);lastWeekStart.setDate(lastWeekStart.getDate()-7);
+  const thisWeek=D().wos.filter(w=>new Date(w.date)>=weekStart);
+  const lastWeek=D().wos.filter(w=>{const d=new Date(w.date);return d>=lastWeekStart&&d<weekStart;});
   const vol=ws=>ws.reduce((a,w)=>a+w.sets.reduce((b,s)=>b+(parseFloat(s.w)||0)*(parseFloat(s.r)||0),0),0);
   const sets=ws=>ws.reduce((a,w)=>a+w.sets.length,0);
   const reps=ws=>ws.reduce((a,w)=>a+w.sets.reduce((b,s)=>b+(parseFloat(s.r)||0),0),0);

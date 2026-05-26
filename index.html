@@ -521,7 +521,7 @@ function renderDash(el){
     <div style="font-size:10px;color:var(--sb);text-transform:uppercase;letter-spacing:2.5px;margin-bottom:3px;font-weight:600">${greeting}</div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="font-size:26px;font-weight:900;color:var(--tx);letter-spacing:-0.5px">${profileNames[activeProfile]} ${bicep()}</div>
-      ${(()=>{const lv=getLevel(D().wos.length);return`<span style="font-size:10px;font-weight:800;color:${lv.color};text-transform:uppercase;letter-spacing:1.5px;padding:3px 9px;border-radius:20px;border:1px solid ${lv.color}44;background:${lv.color}11">${lv.label}</span>`;})()}
+      ${(()=>{const sc=(()=>{const seen=new Set();let n=0;D().wos.forEach(w=>{if(w.sessionId){if(!seen.has(w.sessionId)){seen.add(w.sessionId);n++;}}else{n++;}});return n+D().cl.length;})();const lv=getLevel(sc);return`<span style="font-size:10px;font-weight:800;color:${lv.color};text-transform:uppercase;letter-spacing:1.5px;padding:3px 9px;border-radius:20px;border:1px solid ${lv.color}44;background:${lv.color}11">${lv.label}</span>`;})()}
     </div>
   </div>
 
@@ -902,7 +902,7 @@ function openPlanPicker(idx,field){
 }
 function closePlanPicker(){planPicker={show:false,exIdx:-1,field:"",value:""};renderTools(document.getElementById("content"));}
 function pickPlanValue(idx,field,val){
-  if(field==="sets")planBuilder.exercises[idx].sets=val;
+  if(field==="sets")planBuilder.exercises[idx].sets=parseInt(val)||1;
   else if(field==="reps")planBuilder.exercises[idx].reps=String(val);
   else if(field==="time")planBuilder.exercises[idx].time=String(val);
   else planBuilder.exercises[idx].weight=String(val);
@@ -1123,7 +1123,7 @@ function saveQuickAdd(){
   renderDash(document.getElementById("content"));
   const msg=document.createElement("div");msg.className="saved";msg.style.cssText="position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:2000;white-space:nowrap;padding:10px 18px;border-radius:8px";msg.textContent="✅ Logged!";document.body.appendChild(msg);setTimeout(function(){msg.remove();},2000);
 }
-function relogWo(id){if(!window.confirm("Relog this workout?"))return;const w=D().wos.find(x=>String(x.id)===String(id));if(!w)return;logState.muscle=w.muscle;logState.exercise=w.exercise;logState.sets=w.sets.map(s=>({...s}));setTab("Weights");}
+function relogWo(id){const w=D().wos.find(x=>String(x.id)===String(id));if(!w)return;logState.muscle=w.muscle;logState.exercise=w.exercise;logState.sets=w.sets.map(s=>({...s}));logState.date=tk();setTab("Weights");}
 
 // HISTORY
 let dashExpanded={};
@@ -1334,14 +1334,21 @@ function renderHistory(el){
               if(a._t==="plangroup"){
                 const exp=histState.expanded["pg_"+a.sessionId]!==false;
                 html+=`<div class="card" style="margin-bottom:5px;padding:0;overflow:hidden">
-                  <div onclick="histState.expanded['pg_${a.sessionId}']=!histState.expanded['pg_${a.sessionId}'];renderHistory(document.getElementById('content'))" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer">
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer" onclick="histState.expanded['pg_${a.sessionId}']=!histState.expanded['pg_${a.sessionId}'];renderHistory(document.getElementById('content'))">
                     <div><b style="font-size:13px">📋 ${a.planName}</b><div style="font-size:10px;color:#555">${a.exercises.length} exercises · ${ft(a.date)}</div></div>
-                    <span style="color:#555;font-size:12px">${exp?"▲":"▼"}</span>
+                    <div style="display:flex;gap:6px;align-items:center">
+                      <button onclick="event.stopPropagation();relogPlan('${a.sessionId}')" style="background:none;border:1px solid rgba(var(--acc-rgb),0.3);border-radius:4px;color:var(--acc);font-size:10px;padding:2px 6px;font-weight:700;cursor:pointer">↩</button>
+                      <button onclick="event.stopPropagation();deletePlanSession('${a.sessionId}')" style="background:none;border:none;color:#555;font-size:13px;cursor:pointer">🗑</button>
+                      <span style="color:#555;font-size:12px">${exp?"▲":"▼"}</span>
+                    </div>
                   </div>
                   ${exp?`<div style="border-top:1px solid #1a1a1a">${a.exercises.map(function(e){return`<div style="padding:8px 12px;border-bottom:1px solid #111">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
                       <b style="font-size:12px;color:var(--tx)">${e.exercise}</b>
-                      <button onclick="deleteWo('${e.id}')" style="background:none;border:none;color:#555;font-size:12px;padding:0;cursor:pointer">🗑</button>
+                      <div style="display:flex;gap:5px">
+                        <button onclick="relogWo('${e.id}')" style="background:none;border:1px solid rgba(var(--acc-rgb),0.3);border-radius:4px;color:var(--acc);font-size:10px;padding:2px 5px;font-weight:700;cursor:pointer">↩</button>
+                        <button onclick="deleteWo('${e.id}')" style="background:none;border:none;color:#555;font-size:12px;padding:0;cursor:pointer">🗑</button>
+                      </div>
                     </div>
                     <div>${e.sets.map(function(s,i){return`<span class="tag">S${i+1}${s.r?" "+s.r+"r":""}${s.w?" @"+s.w+(s.ea?" EA":""):""}${s.t?" ⏱"+s.t+"s":""}</span>`;}).join("")}</div>
                   </div>`;}).join("")}</div>`:""}
@@ -1398,6 +1405,24 @@ function deleteWo(id){
   if(tab==="History")renderHistory(document.getElementById("content"));
   else renderDash(document.getElementById("content"));
 }
+function deletePlanSession(sessionId){
+  if(!window.confirm("Delete entire plan session?"))return;
+  D().wos=D().wos.filter(x=>String(x.sessionId)!==String(sessionId));
+  invalidateStreak();save();
+  renderHistory(document.getElementById("content"));
+}
+function relogPlan(sessionId){
+  const exs=D().wos.filter(x=>String(x.sessionId)===String(sessionId));
+  if(!exs.length)return;
+  // Queue all exercises from the session into Weights
+  const sorted=[...exs].reverse();
+  logState.muscle=sorted[0].muscle;
+  logState.exercise=sorted[0].exercise;
+  logState.sets=sorted[0].sets.map(s=>({...s,r:s.r,w:s.w,u:s.u||"lbs",t:s.t||"",ea:s.ea||false}));
+  logState.planQueue=sorted.slice(1).map(e=>({name:e.exercise,muscle:e.muscle,sets:e.sets.length,reps:e.sets[0]?.r||"10",weight:e.sets[0]?.w||"",ea:e.sets[0]?.ea||false}));
+  logState.date=tk();
+  setTab("Weights");
+}
 
 // PRs
 function getBest1RM(ex){
@@ -1431,180 +1456,162 @@ function renderPRs(el){
 }
 
 // CARDIO
-let cardioState={type:"Running",dist:"",du:"mi",h:"",m:"",s:"",course:"",date:tk(),saved:false,notes:"",showIntervals:false,intervals:[],hiitWork:"40",hiitRest:"20",hiitRounds:"8",hiitName:"",tennisScore:"",tennisSurface:"Hard",tennisType:"Match",hiitPreset:""};
+let cardioState={type:"Running",dist:"",du:"mi",h:"",m:"",s:"",course:"",date:tk(),saved:false,notes:"",showIntervals:false,intervals:[],hiitWork:"40",hiitRest:"20",hiitRounds:"8",hiitName:"",tennisScore:"",tennisSurface:"Hard",tennisType:"Match",hiitPreset:"",runType:"Easy",showSplits:false,splits:[]};
 
 function addInterval(){cardioState.intervals.push({speed:"",dur:"",unit:"min"});renderCardio(document.getElementById("content"));}
 function removeInterval(i){cardioState.intervals.splice(i,1);renderCardio(document.getElementById("content"));}
 function toggleIntervals(){cardioState.showIntervals=!cardioState.showIntervals;renderCardio(document.getElementById("content"));}
+function toggleSplits(){
+  cardioState.showSplits=!cardioState.showSplits;
+  if(cardioState.showSplits){
+    // Build splits array based on distance
+    const dist=parseFloat(cardioState.dist)||0;
+    if(dist>0){
+      const full=Math.floor(dist);const rem=Math.round((dist-full)*100)/100;
+      const rows=full+(rem>0?1:0);
+      // Keep existing splits, only add/remove rows as needed
+      while(cardioState.splits.length<rows)cardioState.splits.push({m:"",s:""});
+      cardioState.splits=cardioState.splits.slice(0,rows);
+    } else {
+      if(!cardioState.splits.length)cardioState.splits.push({m:"",s:""});
+    }
+  }
+  renderCardio(document.getElementById("content"));
+}
+function addSplitRow(){cardioState.splits.push({m:"",s:""});renderCardio(document.getElementById("content"));}
+function removeSplitRow(i){cardioState.splits.splice(i,1);renderCardio(document.getElementById("content"));}
 
 function renderCardio(el){
-  const SPORTS=["Tennis","Basketball","Soccer","Football","Baseball","Volleyball","Pickleball","Golf"];
-  const isSport=SPORTS.includes(cardioState.type);
-  const isHIIT=cardioState.type==="HIIT";
-  const canInterval=cardioState.type==="Running"||cardioState.type==="Walking"||cardioState.type==="Cycling";
-
-  // Pace calc for regular runs
-  const lp=!isSport&&!isHIIT&&cardioState.dist&&(parseInt(cardioState.m)||parseInt(cardioState.h))?((parseInt(cardioState.h)||0)*60+(parseInt(cardioState.m)||0)+(parseInt(cardioState.s)||0)/60)/parseFloat(cardioState.dist):null;
-
-  // Treadmill interval calcs
-  let totalMins=0,totalDist=0;
-  if(canInterval&&cardioState.showIntervals&&cardioState.intervals.length){
-    cardioState.intervals.forEach(function(iv){
-      const d=parseFloat(iv.dur)||0;
-      const mins=iv.unit==="min"?d:d/60;
-      totalMins+=mins;
-      if(iv.speed)totalDist+=mins/60*parseFloat(iv.speed);
+  var SPORTS=["Tennis","Basketball","Soccer","Football","Baseball","Volleyball","Pickleball","Golf"];
+  var isSport=SPORTS.includes(cardioState.type);
+  var isHIIT=cardioState.type==="HIIT";
+  var isRunning=cardioState.type==="Running";
+  var canInterval=isRunning||cardioState.type==="Walking"||cardioState.type==="Cycling";
+  var totalMins=0,totalDist=0;
+  if(canInterval&&cardioState.showIntervals&&cardioState.intervals.length){cardioState.intervals.forEach(function(iv){var d=parseFloat(iv.dur)||0;var mins=iv.unit==="min"?d:d/60;totalMins+=mins;if(iv.speed)totalDist+=mins/60*parseFloat(iv.speed);});}
+  var hiitTotal=isHIIT?Math.round(((parseInt(cardioState.hiitWork)||0)+(parseInt(cardioState.hiitRest)||0))*(parseInt(cardioState.hiitRounds)||0)/60):0;
+  var h="";
+  h+='<b style="font-size:16px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);display:block;margin-bottom:10px">Cardio &#127939;</b>';
+  if(cardioState.saved)h+='<div class="saved">&#9989; Activity saved!</div>';
+  h+='<div class="card">';
+  h+='<div class="lbl">Activity Type</div>';
+  h+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:9px;padding-bottom:2px"><div style="display:flex;gap:5px;width:max-content">';
+  ["Running","Tennis","Golf","Walking","HIIT","Cycling","Rowing","Swimming","Elliptical","Basketball","Soccer","Football","Baseball","Volleyball","Pickleball","Other"].forEach(function(t){var ac=cardioState.type===t;h+=["<button data-ctype=\"",t,"\" style=\"padding:5px 11px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;white-space:nowrap;border:1px solid ",(ac?"var(--acc)":"var(--bd)"),";background:",(ac?"var(--acc)":"var(--sf)"),";color:",(ac?"#fff":"#555"),";cursor:pointer\">",t,"</button>"].join("");});
+  h+='</div></div>';
+  h+='<div class="lbl">Date</div><input type="date" id="c-date" value="'+cardioState.date+'" style="margin-bottom:9px">';
+  if(isHIIT){
+    h+='<div class="lbl">HIIT Intervals</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">';
+    h+='<div><div style="font-size:9px;color:#555;margin-bottom:3px;text-transform:uppercase">Work (sec)</div><input type="number" id="hiit-work" value="'+cardioState.hiitWork+'" placeholder="40" style="margin-bottom:0;text-align:center"></div>';
+    h+='<div><div style="font-size:9px;color:#555;margin-bottom:3px;text-transform:uppercase">Rest (sec)</div><input type="number" id="hiit-rest" value="'+cardioState.hiitRest+'" placeholder="20" style="margin-bottom:0;text-align:center"></div>';
+    h+='<div><div style="font-size:9px;color:#555;margin-bottom:3px;text-transform:uppercase">Rounds</div><input type="number" id="hiit-rounds" value="'+cardioState.hiitRounds+'" placeholder="8" style="margin-bottom:0;text-align:center"></div></div>';
+    if(hiitTotal>0){h+='<div style="background:rgba(var(--acc-rgb),0.05);border:1px solid rgba(var(--acc-rgb),0.15);border-radius:6px;padding:8px 12px;margin-bottom:8px;display:flex;gap:16px"><div><div style="font-size:9px;color:#555;text-transform:uppercase">Total Time</div><b style="color:var(--acc)">'+(hiitTotal>=60?Math.floor(hiitTotal/60)+"h "+Math.round(hiitTotal%60)+"m":hiitTotal+" min")+'</b></div><div><div style="font-size:9px;color:#555;text-transform:uppercase">Rounds</div><b style="color:var(--acc)">'+cardioState.hiitRounds+'</b></div></div>';}
+  } else {
+    if(isRunning){
+      h+='<div class="lbl">Run Type</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">';
+      ["Easy","Tempo","Long Run","Intervals","Race"].forEach(function(t){var a=(cardioState.runType||"Easy")===t;h+=["<button data-runtype=\"",t,"\" style=\"padding:5px 12px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid ",(a?"var(--acc)":"var(--bd)"),";background:",(a?"var(--acc)":"var(--sf)"),";color:",(a?"#fff":"#555"),";cursor:pointer\">",t,"</button>"].join("");});
+      h+='</div>';
+    }
+    if(!isSport){
+      h+='<div class="lbl">Distance</div><div style="display:flex;gap:6px;margin-bottom:9px"><input type="number" id="c-dist" value="'+cardioState.dist+'" placeholder="0.0" style="flex:1;margin-bottom:0"><select id="c-du" style="margin-bottom:0;width:auto;padding:8px 7px"><option'+(cardioState.du==="mi"?" selected":"")+'>mi</option><option'+(cardioState.du==="km"?" selected":"")+'>km</option><option'+(cardioState.du==="m"?" selected":"")+'>m</option></select></div>';
+    }
+    h+='<div class="lbl">Time</div>';
+    if(isSport){
+      h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:9px"><div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Hrs</div><input type="number" id="c-h" value="'+cardioState.h+'" placeholder="0" style="margin-bottom:0;text-align:center"></div><div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Mins</div><input type="number" id="c-m" value="'+cardioState.m+'" placeholder="0" style="margin-bottom:0;text-align:center"></div></div>';
+      if(cardioState.type==="Tennis"){
+        h+='<div class="lbl">Session Type</div><div style="display:flex;gap:6px;margin-bottom:9px">';
+        ["Match","Practice"].forEach(function(t){var a=(cardioState.tennisType||"Match")===t;var lbl=t==="Match"?"&#127934; Match":"&#127919; Practice";h+=["<button data-ttype=\"",t,"\" style=\"flex:1;padding:9px;border-radius:8px;font-size:12px;font-weight:800;border:1px solid ",(a?"var(--acc)":"var(--bd)"),";background:",(a?"rgba(var(--acc-rgb),0.15)":"var(--sf)"),";color:",(a?"var(--acc)":"#555"),";cursor:pointer\">",lbl,"</button>"].join("");});
+        h+='</div>';
+        if((cardioState.tennisType||"Match")==="Match"){h+='<div class="lbl">Score <span style="color:#333;font-size:9px">(optional)</span></div><input id="c-tennis-score" value="'+cardioState.tennisScore+'" placeholder="e.g. 6-4, 7-5 or Lost 3-6" style="margin-bottom:9px">';}
+        h+='<div class="lbl">Surface</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">';
+        ["Hard","Clay","Grass","Indoor"].forEach(function(s){var a=cardioState.tennisSurface===s;h+=["<button data-surface=\"",s,"\" style=\"padding:5px 12px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid ",(a?"var(--acc)":"var(--bd)"),";background:",(a?"var(--acc)":"var(--sf)"),";color:",(a?"#fff":"#555"),";cursor:pointer\">",s,"</button>"].join("");});
+        h+='</div>';
+      }
+    } else {
+      h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:9px"><div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Hrs</div><input type="number" id="c-h" value="'+cardioState.h+'" placeholder="0" style="margin-bottom:0;text-align:center"></div><div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Mins</div><input type="number" id="c-m" value="'+cardioState.m+'" placeholder="0" style="margin-bottom:0;text-align:center"></div><div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Secs</div><input type="number" id="c-s" value="'+cardioState.s+'" placeholder="0" style="margin-bottom:0;text-align:center"></div></div>';
+    }
+    if(isRunning){
+      h+='<button onclick="toggleSplits()" style="width:100%;padding:7px;background:none;border:1px solid '+(cardioState.showSplits?"var(--acc)":"var(--bd)")+';border-radius:7px;color:'+(cardioState.showSplits?"var(--acc)":"#555")+';font-size:11px;font-weight:700;cursor:pointer;margin-bottom:'+(cardioState.showSplits?8:9)+'px">'+(cardioState.showSplits?"&#9650; Hide Splits":"&#9660; Mile Splits (optional)")+'</button>';
+      if(cardioState.showSplits){
+        var dist=parseFloat(cardioState.dist)||0;var full=Math.floor(dist);var rem=Math.round((dist-full)*100)/100;
+        // Avg display — shown above the table, updates live
+        var filled=cardioState.splits.filter(function(s){return s.m||s.s;});
+        if(filled.length>=1){
+          var totalSecs=filled.reduce(function(a,s){return a+(parseInt(s.m)||0)*60+(parseInt(s.s)||0);},0);
+          var avgMins=totalSecs/60/filled.length;var am=Math.floor(avgMins);var avgSecs=Math.round((avgMins-am)*60);
+          if(avgSecs===60){am++;avgSecs=0;}
+          var fastSecs=filled.reduce(function(a,s){var t=(parseInt(s.m)||0)*60+(parseInt(s.s)||0);return(!a||t<a)?t:a;},0);
+          var fm=Math.floor(fastSecs/60);var fsec=fastSecs%60;
+          h+='<div id="splits-avg" style="background:rgba(var(--acc-rgb),0.08);border:1px solid rgba(var(--acc-rgb),0.25);border-radius:7px;padding:9px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">';
+          h+='<span style="font-size:12px;color:#555">Avg pace: <b style="color:var(--acc)">'+am+":"+String(avgSecs).padStart(2,"0")+'</b> /'+cardioState.du+'</span>';
+          h+='<span style="font-size:11px;color:#555">Fastest: <b style="color:var(--acc)">'+fm+":"+String(fsec).padStart(2,"0")+'</b></span>';
+          h+='</div>';
+        }
+        h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:8px"><div style="display:grid;grid-template-columns:80px 1fr 1fr 24px;gap:0;padding:6px 10px;border-bottom:1px solid #111"><div style="font-size:8px;color:#444;text-transform:uppercase;font-weight:700">Mile</div><div style="font-size:8px;color:#444;text-transform:uppercase;font-weight:700">Min</div><div style="font-size:8px;color:#444;text-transform:uppercase;font-weight:700">Sec</div><div></div></div>';
+        cardioState.splits.forEach(function(sp,i){
+          var isLast=i===cardioState.splits.length-1&&rem>0&&cardioState.splits.length>1;
+          var label=isLast?("+"+rem+cardioState.du):("Mile "+(i+1));
+          h+='<div style="display:grid;grid-template-columns:80px 1fr 1fr 24px;gap:4px;padding:5px 10px;border-bottom:1px solid var(--bg);align-items:center"><div style="font-size:11px;font-weight:700;color:'+(isLast?"#555":"var(--tx)")+'">'+label+'</div><input type="number" id="split-m-'+i+'" value="'+sp.m+'" placeholder="8" style="margin-bottom:0;font-size:12px;padding:5px;text-align:center"><input type="number" id="split-s-'+i+'" value="'+sp.s+'" placeholder="30" style="margin-bottom:0;font-size:12px;padding:5px;text-align:center"><button onclick="removeSplitRow('+i+')" style="background:none;border:none;color:#333;font-size:13px;cursor:pointer;text-align:center">&#x2715;</button></div>';
+        });
+        h+='</div>';
+        h+='<button onclick="addSplitRow()" style="width:100%;padding:6px;background:none;border:1px dashed rgba(var(--acc-rgb),0.4);border-radius:7px;color:var(--acc);font-size:11px;font-weight:700;cursor:pointer;margin-bottom:8px">+ Add Mile</button>';
+      }
+    }
+    if(canInterval){
+      h+='<button onclick="toggleIntervals()" style="width:100%;padding:7px;background:none;border:1px solid '+(cardioState.showIntervals?"var(--acc)":"var(--bd)")+';border-radius:7px;color:'+(cardioState.showIntervals?"var(--acc)":"#555")+';font-size:11px;font-weight:700;cursor:pointer;margin-bottom:'+(cardioState.showIntervals?8:9)+'px">'+(cardioState.showIntervals?"&#9650; Hide":"&#9660; Treadmill Intervals (optional)")+'</button>';
+      if(cardioState.showIntervals){
+        h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:8px"><div style="display:grid;grid-template-columns:1fr 1fr 60px 24px;gap:0;padding:5px 8px;border-bottom:1px solid #111"><div style="font-size:8px;color:#444;text-transform:uppercase">Speed (mph)</div><div style="font-size:8px;color:#444;text-transform:uppercase">Duration</div><div style="font-size:8px;color:#444;text-transform:uppercase">Unit</div><div></div></div>';
+        if(cardioState.intervals.length){cardioState.intervals.forEach(function(iv,i){h+='<div style="display:grid;grid-template-columns:1fr 1fr 60px 24px;gap:4px;padding:5px 8px;border-bottom:1px solid var(--bg);align-items:center"><input type="number" id="iv-speed-'+i+'" value="'+iv.speed+'" placeholder="6.0" style="margin-bottom:0;font-size:12px;padding:5px;background:var(--sf);border:1px solid #1a1a1a;border-radius:5px"><input type="number" id="iv-dur-'+i+'" value="'+iv.dur+'" placeholder="20" style="margin-bottom:0;font-size:12px;padding:5px;background:var(--sf);border:1px solid #1a1a1a;border-radius:5px"><select id="iv-unit-'+i+'" style="margin-bottom:0;font-size:11px;padding:5px 2px;background:var(--sf);border:1px solid #1a1a1a;border-radius:5px"><option'+(iv.unit==="min"?" selected":"")+'value="min">min</option><option'+(iv.unit==="sec"?" selected":"")+'value="sec">sec</option></select><button onclick="removeInterval('+i+')" style="background:none;border:none;color:var(--acc);font-size:12px;cursor:pointer;text-align:center">&#x2715;</button></div>';});}
+        else{h+='<div style="color:#555;text-align:center;padding:8px;font-size:11px">No intervals yet</div>';}
+        h+='</div><button onclick="addInterval()" style="width:100%;padding:6px;background:none;border:1px dashed rgba(var(--acc-rgb),0.4);border-radius:7px;color:var(--acc);font-size:11px;font-weight:700;cursor:pointer;margin-bottom:8px">+ Add Interval</button>';
+        if(totalMins>0){h+='<div style="background:rgba(var(--acc-rgb),0.05);border:1px solid rgba(var(--acc-rgb),0.15);border-radius:6px;padding:7px 12px;margin-bottom:8px;display:flex;gap:16px"><div><div style="font-size:9px;color:#555;text-transform:uppercase">Total</div><b style="color:var(--acc)">'+(totalMins>=60?Math.floor(totalMins/60)+"h "+Math.round(totalMins%60)+"m":Math.round(totalMins)+" min")+'</b></div>'+(totalDist>0?'<div><div style="font-size:9px;color:#555;text-transform:uppercase">Est. Distance</div><b style="color:var(--acc)">'+totalDist.toFixed(2)+' mi</b></div>':'')+'</div>';}
+      }
+    }
+  }
+  h+='<div class="lbl">'+(isSport?"Place":"Course/Location")+' <span style="color:#333;font-size:9px">(optional)</span></div>';
+  h+='<input id="c-course" value="'+cardioState.course+'" placeholder="'+(isSport?'Tennis club, park court...':'Central Park, Treadmill...')+'" style="margin-bottom:9px">';
+  h+='<div class="lbl">Notes <span style="color:#333;font-size:9px">(optional)</span></div>';
+  h+='<textarea id="c-notes" rows="3" style="width:100%;background:var(--sf);border:1px solid #222;border-radius:7px;color:var(--tx);padding:8px 10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;margin-bottom:9px">'+cardioState.notes+'</textarea>';
+  h+='<button class="pbtn" onclick="saveCardio()">Save Activity</button></div>';
+  if(D().cl.length){
+    h+='<div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:4px;margin-bottom:8px">Recent</div>';
+    D().cl.slice(0,6).forEach(function(c){
+      h+='<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><div><b style="font-size:13px">'+c.type+'</b><div style="font-size:10px;color:#555">'+fd(new Date(c.date+"T12:00:00").toISOString())+(c.course?" &middot; "+c.course:"")+'</div></div><button data-delid=""+c.id+"" style="background:none;border:none;color:#555;font-size:13px;cursor:pointer">&#128465;</button></div><div>';
+      if(c.dist)h+='<span class="tag">&#128205;'+c.dist+c.du+'</span>';
+      if(c.runType&&c.type==="Running")h+='<span class="tag" style="background:rgba(var(--acc-rgb),0.1);color:var(--acc)">'+c.runType+'</span>';
+      if(c.tennisScore)h+='<span class="tag" style="background:rgba(var(--acc-rgb),0.1);color:var(--acc)">&#127934; '+c.tennisScore+'</span>';
+      if(c.type==="Tennis")h+='<span class="tag" style="background:'+(c.tennisType==="Match"?"rgba(var(--acc-rgb),0.1)":"rgba(80,80,80,0.2)")+';color:'+(c.tennisType==="Match"?"var(--acc)":"#888")+'">'+(c.tennisType||"Match")+'</span>';
+      if(c.tennisSurface&&c.type==="Tennis")h+='<span class="tag">'+c.tennisSurface+'</span>';
+      if(c.intervals&&c.intervals.length)h+='<span class="tag">&#128202;'+c.intervals.length+' intervals</span>';
+      if(c.type==="HIIT"&&c.hiitRounds)h+='<span class="tag">&#9889;'+c.hiitRounds+"x("+c.hiitWork+"s/"+c.hiitRest+"s)"+'</span>';
+      if(c.ts>0)h+='<span class="tag">&#9201;'+(c.h&&c.h!=="0"?c.h+"h ":"")+(c.m&&c.m!=="0"?c.m+"m ":"")+(c.s&&c.s!=="0"?c.s+"s":"")+'</span>';
+      if(c.pace)h+='<span class="tag" style="background:rgba(var(--acc-rgb),0.1);color:var(--acc)">&#127939; '+c.pace+' min/'+c.du+'</span>';
+      h+='</div>';
+      if(c.splits&&c.splits.length){
+        var cdist=parseFloat(c.dist)||0;var cfull=Math.floor(cdist);var crem=Math.round((cdist-cfull)*100)/100;
+        h+='<div style="margin-top:6px;background:var(--ib);border-radius:6px;overflow:hidden">';
+        c.splits.forEach(function(sp,i){
+          var isLast=i===c.splits.length-1&&crem>0&&c.splits.length>1;
+          var label=isLast?("+"+crem+(c.du||"mi")):("Mi "+(i+1));
+          var secs=(parseInt(sp.m)||0)*60+(parseInt(sp.s)||0);
+          var faster=i>0&&secs<((parseInt(c.splits[i-1].m)||0)*60+(parseInt(c.splits[i-1].s)||0));
+          h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 9px;border-bottom:1px solid var(--bg)"><span style="font-size:10px;color:#555;font-weight:600">'+label+'</span><span style="font-size:11px;font-weight:800;color:'+(faster?"var(--acc)":"var(--tx)")+'">'+( sp.m||"0")+":"+String(sp.s||"0").padStart(2,"0")+(faster?" &#8593;":"")+'</span></div>';
+        });
+        h+='</div>';
+      }
+      if(c.notes)h+='<div style="font-size:11px;color:#888;margin-top:4px;font-style:italic">"'+c.notes+'"</div>';
+      h+='</div>';
     });
   }
-
-  // HIIT total
-  const hiitTotal=isHIIT?Math.round(((parseInt(cardioState.hiitWork)||0)+(parseInt(cardioState.hiitRest)||0))*(parseInt(cardioState.hiitRounds)||0)/60):0;
-
-  el.innerHTML=`
-  <b style="font-size:16px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);display:block;margin-bottom:10px">Cardio 🏃</b>
-  ${cardioState.saved?`<div class="saved">✅ Activity saved!</div>`:""}
-  <div class="card">
-    <div class="lbl">Activity Type</div>
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:9px;padding-bottom:2px">
-      <div style="display:flex;gap:5px;width:max-content">
-        ${["Running","Tennis","Golf","Walking","HIIT","Cycling","Rowing","Swimming","Elliptical","Basketball","Soccer","Football","Baseball","Volleyball","Pickleball","Other"].map(t=>`<button onclick="setCType('${t}')" style="padding:5px 11px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;white-space:nowrap;border:1px solid ${cardioState.type===t?'var(--acc)':'var(--bd)'};background:${cardioState.type===t?'var(--acc)':'var(--sf)'};color:${cardioState.type===t?'#fff':'#555'};cursor:pointer">${t}</button>`).join("")}
-      </div>
-    </div>
-
-    <div class="lbl">Date</div>
-    <input type="date" id="c-date" value="${cardioState.date}" style="margin-bottom:9px">
-
-    ${isHIIT?`
-    <div class="lbl">HIIT Intervals</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
-      <div><div style="font-size:9px;color:#555;margin-bottom:3px;text-transform:uppercase">Work (sec)</div><input type="number" id="hiit-work" value="${cardioState.hiitWork}" placeholder="40" style="margin-bottom:0;text-align:center"></div>
-      <div><div style="font-size:9px;color:#555;margin-bottom:3px;text-transform:uppercase">Rest (sec)</div><input type="number" id="hiit-rest" value="${cardioState.hiitRest}" placeholder="20" style="margin-bottom:0;text-align:center"></div>
-      <div><div style="font-size:9px;color:#555;margin-bottom:3px;text-transform:uppercase">Rounds</div><input type="number" id="hiit-rounds" value="${cardioState.hiitRounds}" placeholder="8" style="margin-bottom:0;text-align:center"></div>
-    </div>
-    ${hiitTotal>0?`<div style="background:rgba(var(--acc-rgb),0.05);border:1px solid rgba(var(--acc-rgb),0.15);border-radius:6px;padding:8px 12px;margin-bottom:8px;display:flex;gap:16px">
-      <div><div style="font-size:9px;color:#555;text-transform:uppercase">Total Time</div><b style="color:var(--acc)">${hiitTotal>=60?Math.floor(hiitTotal/60)+"h "+Math.round(hiitTotal%60)+"m":hiitTotal+" min"}</b></div>
-      <div><div style="font-size:9px;color:#555;text-transform:uppercase">Rounds</div><b style="color:var(--acc)">${cardioState.hiitRounds}</b></div>
-    </div>`:""}
-    `:`
-    ${!isSport?`
-    <div class="lbl">Distance</div>
-    <div style="display:flex;gap:6px;margin-bottom:9px">
-      <input type="number" id="c-dist" value="${cardioState.dist}" placeholder="0.0" style="flex:1;margin-bottom:0">
-      <select id="c-du" style="margin-bottom:0;width:auto;padding:8px 7px"><option${cardioState.du==="mi"?" selected":""}>mi</option><option${cardioState.du==="km"?" selected":""}>km</option><option${cardioState.du==="m"?" selected":""}>m</option></select>
-    </div>`:``}
-    <div class="lbl">Time</div>
-    ${isSport?`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:9px">
-      <div>
-        <div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Hrs</div>
-        <input type="number" id="c-h" value="${cardioState.h}" placeholder="0" style="margin-bottom:0;text-align:center">
-      </div>
-      <div>
-        <div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Mins</div>
-        <input type="number" id="c-m" value="${cardioState.m}" placeholder="0" style="margin-bottom:0;text-align:center">
-      </div>
-    </div>
-    ${cardioState.type==="Tennis"?`
-    <div class="lbl">Session Type</div>
-    <div style="display:flex;gap:6px;margin-bottom:9px">
-      ${["Match","Practice"].map(t=>`<button onclick="cardioState.tennisType='${t}';renderCardio(document.getElementById('content'))" style="flex:1;padding:9px;border-radius:8px;font-size:12px;font-weight:800;border:1px solid ${(cardioState.tennisType||'Match')===t?'var(--acc)':'var(--bd)'};background:${(cardioState.tennisType||'Match')===t?'rgba(var(--acc-rgb),0.15)':'var(--sf)'};color:${(cardioState.tennisType||'Match')===t?'var(--acc)':'#555'};cursor:pointer">${t==="Match"?"🎾 Match":"🎯 Practice"}</button>`).join("")}
-    </div>
-    ${(cardioState.tennisType||"Match")==="Match"?`
-    <div class="lbl">Score <span style="color:#333;font-size:9px">(optional)</span></div>
-    <input id="c-tennis-score" value="${cardioState.tennisScore}" placeholder="e.g. 6-4, 7-5 or Lost 3-6" style="margin-bottom:9px">`:""}
-    <div class="lbl">Surface</div>
-    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">
-      ${["Hard","Clay","Grass","Indoor"].map(s=>`<button onclick="cardioState.tennisSurface='${s}';renderCardio(document.getElementById('content'))" style="padding:5px 12px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid ${cardioState.tennisSurface===s?'var(--acc)':'var(--bd)'};background:${cardioState.tennisSurface===s?'var(--acc)':'var(--sf)'};color:${cardioState.tennisSurface===s?'#fff':'#555'};cursor:pointer">${s}</button>`).join("")}
-    </div>`:""}
-    `:`
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:9px">
-      <div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Hrs</div><input type="number" id="c-h" value="${cardioState.h}" placeholder="0" style="margin-bottom:0;text-align:center"></div>
-      <div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Mins</div><input type="number" id="c-m" value="${cardioState.m}" placeholder="0" style="margin-bottom:0;text-align:center"></div>
-      <div><div style="font-size:8px;color:#555;text-transform:uppercase;margin-bottom:3px">Secs</div><input type="number" id="c-s" value="${cardioState.s}" placeholder="0" style="margin-bottom:0;text-align:center"></div>
-    </div>`}
-    ${lp?`<div style="background:rgba(var(--acc-rgb),0.05);border:1px solid rgba(var(--acc-rgb),0.1);border-radius:5px;padding:7px 11px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:12px;color:#555">Pace: <b style="color:var(--acc)">${lp.toFixed(2)}</b> min/${cardioState.du}</span>
-      ${(()=>{const best=D().cl.filter(c=>c.type==="Running"&&c.pace&&parseFloat(c.pace)>0).reduce((a,c)=>(!a||parseFloat(c.pace)<parseFloat(a.pace))?c:a,null);return best&&parseFloat(lp.toFixed(2))<parseFloat(best.pace)?`<span style="font-size:10px;font-weight:800;color:#ffd700">🏅 New best!</span>`:best?`<span style="font-size:10px;color:#555">Best: <b style="color:var(--acc)">${best.pace}</b></span>`:"";})()}
-    </div>`:""}
-    ${!cardioState.dist&&!cardioState.m&&!cardioState.h?(()=>{const best=D().cl.filter(c=>c.type==="Running"&&c.pace&&parseFloat(c.pace)>0).reduce((a,c)=>(!a||parseFloat(c.pace)<parseFloat(a.pace))?c:a,null);return best?`<div style="background:rgba(var(--acc-rgb),0.05);border:1px solid rgba(var(--acc-rgb),0.1);border-radius:5px;padding:7px 11px;margin-bottom:9px;font-size:11px;color:#555">🏅 Best pace: <b style="color:var(--acc)">${best.pace} min/${best.du||"mi"}</b></div>`:"";})():""}
-
-    ${canInterval?`
-    <button onclick="toggleIntervals()" style="width:100%;padding:7px;background:none;border:1px solid ${cardioState.showIntervals?'var(--acc)':'var(--bd)'};border-radius:7px;color:${cardioState.showIntervals?'var(--acc)':'#555'};font-size:11px;font-weight:700;cursor:pointer;margin-bottom:${cardioState.showIntervals?8:9}px">
-      ${cardioState.showIntervals?"▲ Hide":"▼ Treadmill Intervals (optional)"}
-    </button>
-    ${cardioState.showIntervals?`
-    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:8px">
-      <div style="display:grid;grid-template-columns:1fr 1fr 60px 24px;gap:0;padding:5px 8px;border-bottom:1px solid #111">
-        ${["Speed (mph)","Duration","Unit",""].map(h=>`<div style="font-size:8px;color:#444;text-transform:uppercase">${h}</div>`).join("")}
-      </div>
-      ${cardioState.intervals.length?cardioState.intervals.map((iv,i)=>`
-      <div style="display:grid;grid-template-columns:1fr 1fr 60px 24px;gap:4px;padding:5px 8px;border-bottom:1px solid var(--bg);align-items:center">
-        <input type="number" id="iv-speed-${i}" value="${iv.speed}" placeholder="6.0" style="margin-bottom:0;font-size:12px;padding:5px;background:var(--sf);border:1px solid #1a1a1a;border-radius:5px">
-        <input type="number" id="iv-dur-${i}" value="${iv.dur}" placeholder="20" style="margin-bottom:0;font-size:12px;padding:5px;background:var(--sf);border:1px solid #1a1a1a;border-radius:5px">
-        <select id="iv-unit-${i}" style="margin-bottom:0;font-size:11px;padding:5px 2px;background:var(--sf);border:1px solid #1a1a1a;border-radius:5px">
-          <option${iv.unit==="min"?" selected":""} value="min">min</option>
-          <option${iv.unit==="sec"?" selected":""} value="sec">sec</option>
-        </select>
-        <button onclick="removeInterval(${i})" style="background:none;border:none;color:var(--acc);font-size:12px;cursor:pointer;text-align:center">✕</button>
-      </div>`).join(""):`<div style="color:#555;text-align:center;padding:8px;font-size:11px">No intervals yet</div>`}
-    </div>
-    <button onclick="addInterval()" style="width:100%;padding:6px;background:none;border:1px dashed rgba(var(--acc-rgb),0.4);border-radius:7px;color:var(--acc);font-size:11px;font-weight:700;cursor:pointer;margin-bottom:8px">+ Add Interval</button>
-    ${totalMins>0?`<div style="background:rgba(var(--acc-rgb),0.05);border:1px solid rgba(var(--acc-rgb),0.15);border-radius:6px;padding:7px 12px;margin-bottom:8px;display:flex;gap:16px">
-      <div><div style="font-size:9px;color:#555;text-transform:uppercase">Total</div><b style="color:var(--acc)">${totalMins>=60?Math.floor(totalMins/60)+"h "+Math.round(totalMins%60)+"m":Math.round(totalMins)+" min"}</b></div>
-      ${totalDist>0?`<div><div style="font-size:9px;color:#555;text-transform:uppercase">Est. Distance</div><b style="color:var(--acc)">${totalDist.toFixed(2)} mi</b></div>`:""}
-    </div>`:""}
-    `:""}
-    `:""}
-    `}
-
-    <div class="lbl">${isSport?"Place":"Course/Location"} <span style="color:#333;font-size:9px">(optional)</span></div>
-    <input id="c-course" value="${cardioState.course}" placeholder="${isSport?'Tennis club, park court...':'Central Park, Treadmill...'}" style="margin-bottom:9px">
-    <div class="lbl">Notes <span style="color:#333;font-size:9px">(optional — saves to Journal)</span></div>
-    <textarea id="c-notes" placeholder="How did it go? What did you learn? What to work on?" rows="3" style="width:100%;background:var(--sf);border:1px solid #222;border-radius:7px;color:var(--tx);padding:8px 10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;margin-bottom:9px">${cardioState.notes}</textarea>
-    <button class="pbtn" onclick="saveCardio()">Save Activity</button>
-  </div>
-  ${D().cl.length?`<div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:4px;margin-bottom:8px">Recent</div>
-  ${D().cl.slice(0,6).map(c=>`<div class="card">
-    <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-      <div><b style="font-size:13px">${c.type}</b><div style="font-size:10px;color:#555">${fd(new Date(c.date+"T12:00:00").toISOString())}${c.course?" · "+c.course:""}</div></div>
-      <button onclick="deleteCardio('${c.id}')" style="background:none;border:none;color:#555;font-size:13px;cursor:pointer">🗑</button>
-    </div>
-    <div>
-      ${c.dist?`<span class="tag">📍${c.dist}${c.du}</span>`:""}
-      ${c.tennisScore?`<span class="tag" style="background:rgba(var(--acc-rgb),0.1);color:var(--acc)">🎾 ${c.tennisScore}</span>`:""}
-      ${c.type==="Tennis"?`<span class="tag" style="background:${c.tennisType==="Match"?"rgba(var(--acc-rgb),0.1)":"rgba(80,80,80,0.2)"};color:${c.tennisType==="Match"?"var(--acc)":"#888"}">${c.tennisType||"Match"}</span>`:""}
-      ${c.tennisSurface&&c.type==="Tennis"?`<span class="tag">${c.tennisSurface}</span>`:""}
-      ${c.hiitName?`<span class="tag" style="background:rgba(var(--acc-rgb),0.1);color:var(--acc)">⚡${c.hiitName}</span>`:""}
-      ${c.hiitPreset?`<span class="tag">${c.hiitPreset}</span>`:""}
-      ${c.intervals&&c.intervals.length?`<span class="tag">📊${c.intervals.length} intervals</span>`:""}
-      ${c.type==="HIIT"&&c.hiitRounds?`<span class="tag">⚡${c.hiitRounds}×(${c.hiitWork}s/${c.hiitRest}s)</span>`:""}
-      ${c.ts>0?`<span class="tag">⏱${c.h&&c.h!=="0"?c.h+"h ":""}${c.m&&c.m!=="0"?c.m+"m ":""}${c.s&&c.s!=="0"?c.s+"s":""}</span>`:""}
-      ${c.pace?`<span class="tag" style="background:rgba(var(--acc-rgb),0.1);color:var(--acc)">🏃${c.pace}/${c.du}</span>`:""}
-    </div>
-    ${c.notes?`<div style="font-size:11px;color:#888;margin-top:4px;font-style:italic">"${c.notes}"</div>`:""}
-  </div>`).join("")}`:""}`;
-
-  [["c-date","date"],["c-dist","dist"],["c-du","du"],["c-h","h"],["c-m","m"],["c-s","s"],["c-course","course"],["c-tennis-score","tennisScore"]].forEach(function(pair){
-    const el2=document.getElementById(pair[0]);if(!el2)return;
-    el2.addEventListener(pair[0]==="c-du"?"change":"input",function(e){cardioState[pair[1]]=e.target.value;});
-  });
-  const cn=document.getElementById("c-notes");if(cn)cn.addEventListener("input",function(e){cardioState.notes=e.target.value;});
-  ["hiit-work","hiit-rest","hiit-rounds"].forEach(function(id){
-    const el2=document.getElementById(id);if(!el2)return;
-    el2.addEventListener("input",function(e){
-      if(id==="hiit-work")cardioState.hiitWork=e.target.value;
-      else if(id==="hiit-rest")cardioState.hiitRest=e.target.value;
-      else cardioState.hiitRounds=e.target.value;
-    });
-  });
-  cardioState.intervals.forEach(function(iv,i){
-    const sp=document.getElementById("iv-speed-"+i);const du2=document.getElementById("iv-dur-"+i);const un=document.getElementById("iv-unit-"+i);
-    if(sp)sp.addEventListener("input",function(e){cardioState.intervals[i].speed=e.target.value;});
-    if(du2)du2.addEventListener("input",function(e){cardioState.intervals[i].dur=e.target.value;});
-    if(un)un.addEventListener("change",function(e){cardioState.intervals[i].unit=e.target.value;});
-  });
+  el.innerHTML=h;
+  el.addEventListener("click",function(e){var b=e.target.closest("[data-ctype]");if(b){setCType(b.dataset.ctype);return;}b=e.target.closest("[data-runtype]");if(b){cardioState.runType=b.dataset.runtype;renderCardio(document.getElementById("content"));return;}b=e.target.closest("[data-ttype]");if(b){cardioState.tennisType=b.dataset.ttype;renderCardio(document.getElementById("content"));return;}b=e.target.closest("[data-surface]");if(b){cardioState.tennisSurface=b.dataset.surface;renderCardio(document.getElementById("content"));return;}b=e.target.closest("[data-delid]");if(b){deleteCardio(b.dataset.delid);return;}},{once:true});
+  [["c-date","date"],["c-dist","dist"],["c-du","du"],["c-h","h"],["c-m","m"],["c-s","s"],["c-course","course"],["c-tennis-score","tennisScore"]].forEach(function(pair){var el2=document.getElementById(pair[0]);if(!el2)return;el2.addEventListener(pair[0]==="c-du"?"change":"input",function(e){cardioState[pair[1]]=e.target.value;});});
+  var cn=document.getElementById("c-notes");if(cn)cn.addEventListener("input",function(e){cardioState.notes=e.target.value;});
+  ["hiit-work","hiit-rest","hiit-rounds"].forEach(function(id){var el2=document.getElementById(id);if(!el2)return;el2.addEventListener("input",function(e){if(id==="hiit-work")cardioState.hiitWork=e.target.value;else if(id==="hiit-rest")cardioState.hiitRest=e.target.value;else cardioState.hiitRounds=e.target.value;});});
+  cardioState.splits.forEach(function(sp,i){var sm=document.getElementById("split-m-"+i);var ss=document.getElementById("split-s-"+i);if(sm)sm.addEventListener("input",function(e){cardioState.splits[i].m=e.target.value;});if(ss)ss.addEventListener("input",function(e){cardioState.splits[i].s=e.target.value;});});
+  cardioState.intervals.forEach(function(iv,i){var sp=document.getElementById("iv-speed-"+i);var du2=document.getElementById("iv-dur-"+i);var un=document.getElementById("iv-unit-"+i);if(sp)sp.addEventListener("input",function(e){cardioState.intervals[i].speed=e.target.value;});if(du2)du2.addEventListener("input",function(e){cardioState.intervals[i].dur=e.target.value;});if(un)un.addEventListener("change",function(e){cardioState.intervals[i].unit=e.target.value;});});
 }
-function setCType(t){cardioState.type=t;cardioState.intervals=[];cardioState.showIntervals=false;renderCardio(document.getElementById("content"));}
+function fmtPace(p){var mins=parseFloat(p);if(!mins||isNaN(mins))return p;var m=Math.floor(mins);var s=Math.round((mins-m)*60);if(s===60){m++;s=0;}return m+":"+String(s).padStart(2,"0");}
+function setCType(t){cardioState.type=t;cardioState.intervals=[];cardioState.showIntervals=false;cardioState.showSplits=false;cardioState.splits=[];cardioState.tennisScore="";cardioState.tennisType="Match";cardioState.runType="Easy";renderCardio(document.getElementById("content"));}
 function saveCardio(){
   const SPORTS_LIST=["Tennis","Basketball","Soccer","Football","Baseball","Volleyball","Pickleball","Golf"];
   const isSportSave=SPORTS_LIST.includes(cardioState.type);
@@ -1612,8 +1619,17 @@ function saveCardio(){
   const hasData=cardioState.dist||cardioState.m||cardioState.h||cardioState.s||cardioState.intervals.length||(isHIITSave&&cardioState.hiitRounds)||isSportSave;
   if(!hasData){alert("Please enter some activity data first.");return;}
   const ts=(parseInt(cardioState.h)||0)*3600+(parseInt(cardioState.m)||0)*60+(parseInt(cardioState.s)||0);
-  const pace=cardioState.dist&&ts&&!isSportSave?((ts/60)/parseFloat(cardioState.dist)).toFixed(2):null;
-  D().cl.unshift({id:String(Date.now()),date:cardioState.date,type:cardioState.type,dist:isSportSave?"":cardioState.dist,notes:cardioState.notes,intervals:cardioState.intervals,hiitWork:cardioState.hiitWork,hiitRest:cardioState.hiitRest,hiitRounds:cardioState.hiitRounds,hiitName:cardioState.hiitName,hiitPreset:cardioState.hiitPreset,tennisScore:cardioState.tennisScore,tennisSurface:cardioState.tennisSurface,tennisType:cardioState.tennisType,du:cardioState.du,h:cardioState.h,m:cardioState.m,s:cardioState.s,ts,pace,course:cardioState.course});
+  // Use splits-derived avg pace if splits present, else total time/distance
+  const filledSplits=cardioState.splits.filter(s=>s.m||s.s);
+  let pace=null;
+  if(filledSplits.length>=2){
+    const totalSplitSecs=filledSplits.reduce((a,s)=>a+(parseInt(s.m)||0)*60+(parseInt(s.s)||0),0);
+    pace=((totalSplitSecs/60)/filledSplits.length).toFixed(2);
+  } else if(cardioState.dist&&ts&&!isSportSave){
+    pace=((ts/60)/parseFloat(cardioState.dist)).toFixed(2);
+  }
+  const splitsToSave=cardioState.splits.filter(s=>s.m||s.s).map(s=>({m:s.m,s:s.s}));
+  D().cl.unshift({id:String(Date.now()),date:cardioState.date,type:cardioState.type,dist:isSportSave?"":cardioState.dist,notes:cardioState.notes,intervals:cardioState.intervals,splits:splitsToSave,hiitWork:cardioState.hiitWork,hiitRest:cardioState.hiitRest,hiitRounds:cardioState.hiitRounds,hiitName:cardioState.hiitName,hiitPreset:cardioState.hiitPreset,tennisScore:cardioState.tennisScore,tennisSurface:cardioState.tennisSurface,tennisType:cardioState.tennisType,runType:cardioState.runType,du:cardioState.du,h:cardioState.h,m:cardioState.m,s:cardioState.s,ts,pace,course:cardioState.course});
   if(cardioState.notes){
     if(!profiles[activeProfile].journal)profiles[activeProfile].journal={};
     const jk=cardioState.date;
@@ -1621,7 +1637,7 @@ function saveCardio(){
     const prefix=cardioState.type+" note: ";
     profiles[activeProfile].journal[jk]=existing?(existing+"\n"+prefix+cardioState.notes):(prefix+cardioState.notes);
   }
-  cardioState.dist="";cardioState.h="";cardioState.m="";cardioState.s="";cardioState.course="";cardioState.notes="";cardioState.intervals=[];cardioState.showIntervals=false;cardioState.date=tk();cardioState.saved=true;cardioState.tennisScore="";cardioState.hiitName="";cardioState.hiitPreset="";cardioState.tennisType="Match";
+  cardioState.dist="";cardioState.h="";cardioState.m="";cardioState.s="";cardioState.course="";cardioState.notes="";cardioState.intervals=[];cardioState.showIntervals=false;cardioState.splits=[];cardioState.showSplits=false;cardioState.date=tk();cardioState.saved=true;cardioState.tennisScore="";cardioState.hiitName="";cardioState.hiitPreset="";cardioState.tennisType="Match";cardioState.runType="Easy";
   save();renderCardio(document.getElementById("content"));
   setTimeout(()=>{cardioState.saved=false;renderCardio(document.getElementById("content"));},2500);
 }
@@ -2017,7 +2033,8 @@ function startPlanEditLog(i){
 function startPlanAutoLog(i){
   if(!confirm("Auto-log all exercises in this plan now?"))return;
   const t=D().templates[i];if(!t)return;
-  const logDate=prompt("Log date (YYYY-MM-DD):",tk())||tk();
+  // Use planBuilder.logDate if set (from the date picker in the plan card), else today
+  const logDate=planBuilder.logDate||tk();
   const exData=t.exerciseData||t.exercises.map(function(e){return{name:e,muscle:"Full Body",sets:t.sets||3,reps:t.reps||"10"};});
   const sessionId="plan_"+Date.now();
   const planName=t.name;
@@ -2028,8 +2045,9 @@ function startPlanAutoLog(i){
   });
   invalidateStreak();
   save();
+  planBuilder.logDate=tk(); // reset date after logging
   const msg=document.createElement("div");msg.className="saved";msg.textContent="✅ "+exData.length+" exercises logged!";
-  document.getElementById("content").prepend(msg);setTimeout(function(){msg.remove();},2500);
+  document.getElementById("content").prepend(msg);setTimeout(function(){msg.remove();renderTools(document.getElementById("content"));},2500);
 }
 
 function renderTools(el){
@@ -2116,7 +2134,7 @@ function renderTools(el){
         <button onclick="closePlanPicker()" style="background:rgba(255,255,255,0.1);border:none;border-radius:20px;color:#fff;font-size:11px;padding:4px 12px;cursor:pointer">Done</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;max-height:180px;overflow-y:auto;margin-bottom:10px">
-        ${(planPicker.field==='sets'?[1,2,3,4,5,6]:planPicker.field==='reps'?Array.from({length:50},(_,i)=>i+1):planPicker.field==='time'?[10,15,20,30,45,60,90,120,150,180,240,300,360,420,480,600]:["BW",8,10,12,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,115,120,135,155,185,205,225,245,275,315]).map(v=>`<button onclick="pickPlanValue(${planPicker.exIdx},'${planPicker.field}',${v})" style="min-width:48px;padding:10px 6px;border-radius:12px;font-size:14px;font-weight:700;border:1px solid ${String(planPicker.value)===String(v)?'var(--acc)':'rgba(255,255,255,0.1)'};background:${String(planPicker.value)===String(v)?'rgba(var(--acc-rgb),0.25)':'rgba(255,255,255,0.05)'};color:${String(planPicker.value)===String(v)?'var(--acc)':'var(--tx)'};cursor:pointer">${v}</button>`).join("")}
+        ${(planPicker.field==='sets'?[1,2,3,4,5,6]:planPicker.field==='reps'?Array.from({length:50},(_,i)=>i+1):planPicker.field==='time'?[10,15,20,30,45,60,90,120,150,180,240,300,360,420,480,600]:["BW",5,8,10,12,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,115,120,135,155,185,205,225,245,275,315]).map(v=>`<button onclick="pickPlanValue(${planPicker.exIdx},'${planPicker.field}','${v}')" style="min-width:48px;padding:10px 6px;border-radius:12px;font-size:14px;font-weight:700;border:1px solid ${String(planPicker.value)===String(v)?'var(--acc)':'rgba(255,255,255,0.1)'};background:${String(planPicker.value)===String(v)?'rgba(var(--acc-rgb),0.25)':'rgba(255,255,255,0.05)'};color:${String(planPicker.value)===String(v)?'var(--acc)':'var(--tx)'};cursor:pointer">${v}</button>`).join("")}
       </div>
       <div style="display:flex;gap:8px;align-items:center;border-top:1px solid rgba(255,255,255,0.07);padding-top:10px">
         <input id="plan-custom-input" type="number" placeholder="Type custom..." value="" style="flex:1;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;padding:8px 12px;font-size:14px;margin-bottom:0">
@@ -2139,6 +2157,10 @@ function renderTools(el){
         </div>
       </div>
       <div style="margin-bottom:8px">${exData.map(ex=>`<div style="font-size:11px;color:#888;margin-bottom:2px">• ${ex.name} — ${ex.sets||3}×${ex.reps||10}${ex.weight?" @ "+ex.weight+"lbs":""}</div>`).join("")}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;background:rgba(var(--acc-rgb),0.05);border:1px solid rgba(var(--acc-rgb),0.15);border-radius:7px;padding:7px 10px">
+        <span style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px;flex-shrink:0">Date:</span>
+        <input type="date" id="plan-date-${i}" value="${planBuilder.logDate||tk()}" style="flex:1;margin-bottom:0;font-size:12px;background:transparent;border:none;color:var(--tx);padding:0">
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
         <button onclick="startPlanEditLog(${i})" style="padding:8px;background:none;border:1px solid var(--acc);border-radius:7px;color:var(--acc);font-size:11px;font-weight:700;cursor:pointer">Edit & Log</button>
         <button onclick="startPlanAutoLog(${i})" style="padding:8px;background:var(--acc);border:none;border-radius:7px;color:#fff;font-size:11px;font-weight:700;cursor:pointer">⚡ Auto-Log</button>
@@ -2186,6 +2208,8 @@ function renderTools(el){
   // Listeners
   const pn=document.getElementById("plan-name");if(pn)pn.addEventListener("input",function(e){planBuilder.name=e.target.value;});
   const pld=document.getElementById("plan-log-date");if(pld)pld.addEventListener("input",function(e){planBuilder.logDate=e.target.value;});
+  // Wire date pickers on saved plan cards
+  D().templates.forEach(function(_,i){const pd=document.getElementById("plan-date-"+i);if(pd)pd.addEventListener("input",function(e){planBuilder.logDate=e.target.value;});});
   const ps=document.getElementById("plan-search");
   if(ps){ps.addEventListener("input",function(e){planBuilder.search=e.target.value;planBuilder.searching=e.target.value.length>0;renderTools(el);const r=document.getElementById("plan-search");if(r){r.focus();const l=r.value.length;if(r.setSelectionRange)r.setSelectionRange(l,l);}});}
   // Plan exercise values now set via picker — no input listeners needed
@@ -2454,29 +2478,6 @@ function buildBalanceChart(){
   return svg+table+alerts+recsHTML+legend;
 }
 
-function buildMealCard(dk){
-  const dayMeals=((D().meals)||{})[dk];
-  if(!dayMeals)return"";
-  const hasMeals=["breakfast","lunch","dinner"].some(function(m){return dayMeals[m]&&dayMeals[m].length>0;});
-  if(!hasMeals)return"";
-  const mealEmoji={breakfast:"🌅",lunch:"☀️",dinner:"🌙",snacks:"🍎"};
-  let html='<div class="card" style="margin-bottom:5px;border:1px solid rgba(0,200,83,0.15)"><div style="font-size:10px;color:rgba(0,200,83,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px">🥦 Food</div>';
-  var total=0;
-  ["breakfast","lunch","dinner","snacks"].forEach(function(meal){
-    const items=dayMeals[meal]||[];
-    if(!items.length)return;
-    const prot=items.reduce(function(a,f){return a+(parseInt(f.protein)||0);},0);
-    total+=prot;
-    html+='<div style="margin-bottom:5px"><span style="font-size:10px;color:#888;text-transform:capitalize">'+mealEmoji[meal]+" "+meal+'</span>';
-    if(prot>0)html+='<span style="font-size:10px;color:var(--acc);font-weight:700;margin-left:6px">'+prot+'g</span>';
-    html+='<div style="margin-top:3px">';
-    items.forEach(function(f){html+='<span class="tag" style="font-size:9px">'+f.name+(f.protein?" ("+f.protein+"g)":"")+'</span>';});
-    html+='</div></div>';
-  });
-  if(total>0)html+='<div style="font-size:10px;color:var(--acc);font-weight:700;margin-top:5px;border-top:1px solid var(--bd);padding-top:5px">Total protein: '+total+'g</div>';
-  html+='</div>';
-  return html;
-}
 
 
 

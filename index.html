@@ -77,6 +77,7 @@ button{font-family:-apple-system,sans-serif;cursor:pointer;-webkit-tap-highlight
 .glass-panel{animation:slideUp 0.3s cubic-bezier(0.34,1.1,0.64,1) both}
 .glass-backdrop{animation:fadeInBg 0.2s ease both}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 <div id="pr-banner"></div>
@@ -104,6 +105,17 @@ button{font-family:-apple-system,sans-serif;cursor:pointer;-webkit-tap-highlight
     <div style="padding:12px 20px 16px;flex-shrink:0;border-top:1px solid var(--bd)">
       <button class="pbtn" onclick="document.getElementById('settings-modal').style.display='none'">Done</button>
     </div>
+  </div>
+</div>
+
+<!-- Smart Add modal - static shell, content rendered by JS -->
+<div id="smartadd-modal" style="display:none" class="modal-bg">
+  <div class="modal" style="display:flex;flex-direction:column;max-height:88vh;padding:0;overflow:hidden">
+    <div style="padding:16px 20px 12px;flex-shrink:0;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center">
+      <b style="font-size:14px;color:var(--acc);letter-spacing:2px;text-transform:uppercase">✨ Smart Add</b>
+      <button onclick="closeSmartAdd()" style="background:none;border:none;color:#555;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div id="smartadd-content" style="overflow-y:auto;flex:1;padding:16px 20px;-webkit-overflow-scrolling:touch"></div>
   </div>
 </div>
 
@@ -2582,12 +2594,254 @@ function startPlanAutoLog(i){
   document.getElementById("content").prepend(msg);setTimeout(function(){msg.remove();renderTools(document.getElementById("content"));},2500);
 }
 
+// ============ SMART ADD (AI Plan Import) ============
+let smartAdd={step:"upload",images:[],busy:false,busyMsg:"",error:"",parsed:null,providerUsed:"",manualText:""};
+const GROQ_VISION_MODEL="meta-llama/llama-4-scout-17b-16e-instruct"; // Groq's model catalog changes often — update here if this gets deprecated
+const GITHUB_MODEL="openai/gpt-4o";
+
+function openSmartAdd(){
+  smartAdd={step:"upload",images:[],busy:false,busyMsg:"",error:"",parsed:null,providerUsed:"",manualText:""};
+  document.getElementById("smartadd-modal").style.display="flex";
+  renderSmartAdd();
+}
+function closeSmartAdd(){document.getElementById("smartadd-modal").style.display="none";}
+
+function renderSmartAdd(){
+  const el=document.getElementById("smartadd-content");
+  const hasGH=!!(localStorage.getItem("il_gh_token")||"").trim();
+  const hasGroq=!!(localStorage.getItem("il_groq_key")||"").trim();
+  let html="";
+  if(!hasGH&&!hasGroq&&smartAdd.step==="upload"){
+    html+='<div style="font-size:12px;color:#999;line-height:1.6;margin-bottom:12px">No AI key set up yet. Add a GitHub token or Groq key in ⚙️ Settings to auto-parse photos — or just paste your plan as text below and I\'ll parse it without AI.</div>';
+  }
+  if(smartAdd.step==="upload"){
+    html+='<div style="font-size:12px;color:#999;line-height:1.5;margin-bottom:12px">Upload a photo or PDF of your workout plan.</div>';
+    html+='<input id="smartadd-file" type="file" accept="image/*,.pdf" style="margin-bottom:12px" onchange="handleSmartAddFile(this.files[0])">';
+    html+='<div id="smartadd-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>';
+    html+='<button id="smartadd-parse-btn" class="pbtn" disabled style="opacity:0.4" onclick="runSmartAddParse()">Parse Plan</button>';
+    html+='<div style="text-align:center;font-size:10px;color:#555;margin:14px 0;text-transform:uppercase;letter-spacing:1px">— or —</div>';
+    html+='<div class="lbl">Paste plan as text</div>';
+    html+='<textarea id="smartadd-manual" rows="5" placeholder="Bench Press 3x10 135lbs&#10;Squat 4x8&#10;..." style="margin-bottom:8px">'+smartAdd.manualText+'</textarea>';
+    html+='<button class="pbtn sm" onclick="smartAdd.manualText=document.getElementById(\'smartadd-manual\').value;runManualParse()">Parse Text</button>';
+  } else if(smartAdd.step==="busy"){
+    html+='<div style="text-align:center;padding:30px 10px">';
+    html+='<div style="font-size:13px;color:var(--acc);font-weight:700;margin-bottom:6px">⏳ '+smartAdd.busyMsg+'</div>';
+    html+='<div style="font-size:11px;color:#555">This usually takes a few seconds</div>';
+    html+='</div>';
+  } else if(smartAdd.step==="error"){
+    html+='<div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);border-radius:8px;padding:12px;margin-bottom:14px;color:#f87171;font-size:12px;line-height:1.5">'+smartAdd.error+'</div>';
+    html+='<button class="pbtn sm" onclick="smartAdd.step=\'upload\';renderSmartAdd()">← Try Again</button>';
+  } else if(smartAdd.step==="review"){
+    html+='<div style="font-size:11px;color:#00c853;margin-bottom:10px">✅ Parsed via '+smartAdd.providerUsed+' — review below, then edit in the plan builder before saving.</div>';
+    html+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:10px;margin-bottom:14px;max-height:240px;overflow-y:auto">';
+    smartAdd.parsed.forEach(function(e){
+      html+='<div style="padding:6px 0;border-bottom:1px solid #1a1a2a;font-size:12px"><b>'+escapeHtml(e.name)+'</b> <span style="color:#777">— '+escapeHtml(e.sets)+' x '+escapeHtml(e.reps)+(e.weight?' @ '+escapeHtml(e.weight):'')+'</span></div>';
+    });
+    html+='</div>';
+    html+='<button class="pbtn" onclick="applyParsedToPlanBuilder()">Load into Plan Builder →</button>';
+  }
+  el.innerHTML=html;
+}
+
+function fileToDataUrl(file){return new Promise(function(res,rej){const r=new FileReader();r.onload=function(){res(r.result);};r.onerror=rej;r.readAsDataURL(file);});}
+
+function compressImageDataUrl(dataUrl,maxDim){
+  return new Promise(function(res){
+    const img=new Image();
+    img.onload=function(){
+      let w=img.width,h=img.height;
+      if(w>maxDim||h>maxDim){const scale=maxDim/Math.max(w,h);w=Math.round(w*scale);h=Math.round(h*scale);}
+      const canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
+      canvas.getContext("2d").drawImage(img,0,0,w,h);
+      res(canvas.toDataURL("image/jpeg",0.82));
+    };
+    img.src=dataUrl;
+  });
+}
+
+async function pdfToImages(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const images=[];
+  const maxPages=Math.min(pdf.numPages,3);
+  for(let i=1;i<=maxPages;i++){
+    const page=await pdf.getPage(i);
+    const viewport=page.getViewport({scale:1.5});
+    const canvas=document.createElement("canvas");
+    canvas.width=viewport.width;canvas.height=viewport.height;
+    await page.render({canvasContext:canvas.getContext("2d"),viewport:viewport}).promise;
+    images.push(canvas.toDataURL("image/jpeg",0.85));
+  }
+  return images;
+}
+
+async function handleSmartAddFile(file){
+  if(!file)return;
+  const btn=document.getElementById("smartadd-parse-btn");
+  const preview=document.getElementById("smartadd-preview");
+  preview.innerHTML='<div style="font-size:11px;color:#777">Processing file…</div>';
+  try{
+    let images=[];
+    if(file.type==="application/pdf"){
+      images=await pdfToImages(file);
+    } else {
+      const raw=await fileToDataUrl(file);
+      images=[await compressImageDataUrl(raw,1600)];
+    }
+    smartAdd.images=images;
+    preview.innerHTML=images.map(function(src){return '<img src="'+src+'" style="width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--bd)">';}).join("");
+    if(btn){btn.disabled=false;btn.style.opacity=1;}
+  }catch(err){
+    preview.innerHTML='<div style="font-size:11px;color:#f87171">Couldn\'t read that file. Try a different photo or PDF.</div>';
+  }
+}
+
+function buildSmartAddPrompt(){
+  return 'You are reading a photo or scan of a handwritten or printed workout plan. Extract every exercise into a JSON array ONLY, no other text, no markdown fences. Schema: [{"name":string,"sets":number,"reps":string,"weight":string}]. "weight" and "reps" can be empty strings if not specified. If a range is given (e.g. 8-12 reps) keep it as a string like "8-12". Use your best judgement on illegible text. Return ONLY the JSON array.';
+}
+
+async function callGitHubModels(images){
+  const token=(localStorage.getItem("il_gh_token")||"").trim();
+  if(!token)throw new Error("no-github-token");
+  const content=[{type:"text",text:buildSmartAddPrompt()}];
+  images.forEach(function(src){content.push({type:"image_url",image_url:{url:src}});});
+  const resp=await fetch("https://models.github.ai/inference/chat/completions",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+token,"Accept":"application/vnd.github+json"},
+    body:JSON.stringify({model:GITHUB_MODEL,messages:[{role:"user",content:content}]})
+  });
+  if(!resp.ok)throw new Error("github-failed-"+resp.status);
+  const data=await resp.json();
+  const text=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;
+  if(!text)throw new Error("github-empty");
+  return text;
+}
+
+async function callGroqVision(images){
+  const key=(localStorage.getItem("il_groq_key")||"").trim();
+  if(!key)throw new Error("no-groq-key");
+  const content=[{type:"text",text:buildSmartAddPrompt()}];
+  images.forEach(function(src){content.push({type:"image_url",image_url:{url:src}});});
+  const resp=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+    body:JSON.stringify({model:GROQ_VISION_MODEL,messages:[{role:"user",content:content}]})
+  });
+  if(!resp.ok)throw new Error("groq-failed-"+resp.status);
+  const data=await resp.json();
+  const text=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;
+  if(!text)throw new Error("groq-empty");
+  return text;
+}
+
+function extractJSONArray(text){
+  let t=text.trim();
+  t=t.replace(/^```json/i,"").replace(/^```/,"").replace(/```$/,"").trim();
+  const start=t.indexOf("[");
+  const end=t.lastIndexOf("]");
+  if(start===-1||end===-1)throw new Error("no-json-found");
+  const parsed=JSON.parse(t.slice(start,end+1));
+  if(!Array.isArray(parsed)||!parsed.length)throw new Error("empty-json");
+  return parsed.map(function(e){return{name:String(e.name||"").trim(),sets:parseInt(e.sets)||3,reps:String(e.reps||"10"),weight:String(e.weight||"")};}).filter(function(e){return e.name;});
+}
+
+async function runSmartAddParse(){
+  if(!smartAdd.images.length)return;
+  smartAdd.step="busy";smartAdd.busyMsg="Reading your plan…";renderSmartAdd();
+  const hasGH=!!(localStorage.getItem("il_gh_token")||"").trim();
+  const hasGroq=!!(localStorage.getItem("il_groq_key")||"").trim();
+  if(!hasGH&&!hasGroq){
+    smartAdd.step="error";smartAdd.error="No AI key set up. Add a GitHub token or Groq key in ⚙️ Settings, or use the text-paste option instead.";renderSmartAdd();return;
+  }
+  let text=null,provider="";
+  if(hasGH){
+    try{text=await callGitHubModels(smartAdd.images);provider="GitHub Models (GPT-4o)";}catch(e){}
+  }
+  if(!text&&hasGroq){
+    smartAdd.busyMsg=hasGH?"Trying fallback (Groq)…":"Reading your plan…";renderSmartAdd();
+    try{text=await callGroqVision(smartAdd.images);provider="Groq (Llama 4 Scout)";}catch(e){}
+  }
+  if(!text){
+    smartAdd.step="error";smartAdd.error="Couldn't reach either AI provider (rate limit, bad key, or network issue). Try again in a moment, or use the text-paste option.";renderSmartAdd();return;
+  }
+  try{
+    const parsed=extractJSONArray(text);
+    smartAdd.parsed=parsed;smartAdd.providerUsed=provider;smartAdd.step="review";renderSmartAdd();
+  }catch(e){
+    smartAdd.step="error";smartAdd.error="The AI response wasn't in the expected format. Try again, or use the text-paste option.";renderSmartAdd();
+  }
+}
+
+function runManualParse(){
+  const txt=(smartAdd.manualText||"").trim();
+  if(!txt){smartAdd.step="error";smartAdd.error="Paste some plan text first.";renderSmartAdd();return;}
+  const lines=txt.split("\n").map(function(l){return l.trim();}).filter(Boolean);
+  const results=[];
+  const setsRepsRe=/(\d+)\s*[xX×]\s*(\d+(?:\s*-\s*\d+)?)/;
+  const weightRe=/(\d+(?:\.\d+)?)\s*(lbs?|kg)/i;
+  lines.forEach(function(line){
+    const srMatch=line.match(setsRepsRe);
+    const wMatch=line.match(weightRe);
+    let name=line;
+    if(srMatch)name=name.replace(srMatch[0],"");
+    if(wMatch)name=name.replace(wMatch[0],"");
+    name=name.replace(/[-:•,]+/g," ").replace(/\s+/g," ").trim();
+    if(!name)return;
+    results.push({name:name,sets:srMatch?parseInt(srMatch[1]):3,reps:srMatch?srMatch[2].replace(/\s+/g,""):"10",weight:wMatch?wMatch[1]+wMatch[2].toLowerCase():""});
+  });
+  if(!results.length){smartAdd.step="error";smartAdd.error="Couldn't find any recognizable exercise lines. Try formatting like: \"Bench Press 3x10 135lbs\" — one exercise per line.";renderSmartAdd();return;}
+  smartAdd.parsed=results;smartAdd.providerUsed="text parser (no AI)";smartAdd.step="review";renderSmartAdd();
+}
+
+function escapeHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function strSimilarity(a,b){
+  a=a.toLowerCase().trim();b=b.toLowerCase().trim();
+  if(a===b)return 1;
+  if(!a.length||!b.length)return 0;
+  if(a.includes(b)||b.includes(a))return 0.85;
+  const bigrams=function(s){const arr=[];for(let i=0;i<s.length-1;i++)arr.push(s.slice(i,i+2));return arr;};
+  const ba=bigrams(a),bb=bigrams(b);
+  if(!ba.length||!bb.length)return 0;
+  let matches=0;const bbCopy=bb.slice();
+  ba.forEach(function(g){const idx=bbCopy.indexOf(g);if(idx!==-1){matches++;bbCopy.splice(idx,1);}});
+  return (2*matches)/(ba.length+bb.length);
+}
+
+function fuzzyMatchExercise(name){
+  let best=null,bestScore=0;
+  MG.forEach(function(m){
+    aE(m).forEach(function(candidate){
+      const score=strSimilarity(name,candidate);
+      if(score>bestScore){bestScore=score;best={name:candidate,muscle:m};}
+    });
+  });
+  if(best&&bestScore>=0.55)return best;
+  return null;
+}
+
+function applyParsedToPlanBuilder(){
+  const mapped=smartAdd.parsed.map(function(e){
+    const match=fuzzyMatchExercise(e.name);
+    if(!match){
+      if(!D().cx["Full Body"])D().cx["Full Body"]=[];
+      if(!D().cx["Full Body"].includes(e.name))D().cx["Full Body"].push(e.name);
+    }
+    return{name:match?match.name:e.name,muscle:match?match.muscle:"Full Body",sets:e.sets,reps:e.reps,weight:e.weight||"",ea:false,superset:null};
+  });
+  save();
+  planBuilder={name:"Imported Plan",exercises:mapped,search:"",searching:false,editingIdx:-1,logDate:tk()};
+  closeSmartAdd();
+  setTab("My Plans");
+}
+
 function renderTools(el){
   const allEx=[];MG.forEach(function(m){(EX[m]||[]).forEach(function(e){allEx.push({e,m});});Object.keys(D().cx||{}).forEach(function(m2){(D().cx[m2]||[]).forEach(function(e){allEx.push({e,m:m2});});});});
   const searchResults=planBuilder.search.length>1?allEx.filter(function(x){return x.e.toLowerCase().includes(planBuilder.search.toLowerCase());}):[];
 
   el.innerHTML=`
   <b style="font-size:16px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);display:block;margin-bottom:12px">My Plans 📋</b>
+
+  <button onclick="openSmartAdd()" style="width:100%;padding:11px;margin-bottom:12px;background:linear-gradient(135deg,rgba(var(--acc-rgb),0.15),rgba(var(--acc-rgb),0.05));border:1px solid rgba(var(--acc-rgb),0.4);border-radius:9px;color:var(--acc);font-size:12px;font-weight:800;letter-spacing:0.5px;cursor:pointer">✨ Smart Add — Import Plan from Photo/PDF</button>
 
   <!-- Plan Builder -->
   <div class="card" style="margin-bottom:10px">
@@ -3131,6 +3385,16 @@ function renderSettingsContent(){
   html+='</div>';
   html+='</button>';
   html+='</div>';
+  html+='<div class="lbl" style="margin-top:4px">Smart Add (AI Plan Import)</div>';
+  html+='<div style="font-size:10px;color:#555;margin-bottom:8px;line-height:1.5">Keys are stored only in this browser and never leave your device except to call the AI provider directly. Free tier, no billing. <span style="text-decoration:underline;cursor:pointer" onclick="toggleSmartAddHelp()">How do I get these?</span></div>';
+  html+='<div id="smartadd-help" class="h" style="font-size:10px;color:#777;line-height:1.6;background:var(--ib);border:1px solid var(--ir);border-radius:7px;padding:9px;margin-bottom:10px">';
+  html+='<b style="color:var(--tx)">GitHub token:</b> github.com/settings/tokens → Fine-grained tokens → Generate new token → under Account permissions set "Models" to Read-only → Generate → copy it.<br><br>';
+  html+='<b style="color:var(--tx)">Groq key:</b> console.groq.com/keys → Create API Key → copy it.';
+  html+='</div>';
+  html+='<div class="lbl">GitHub Token (primary)</div>';
+  html+='<input id="settings-gh-token" type="password" placeholder="github_pat_..." value="'+(localStorage.getItem("il_gh_token")||"")+'" style="margin-bottom:10px" onchange="localStorage.setItem(\'il_gh_token\',this.value)">';
+  html+='<div class="lbl">Groq API Key (fallback)</div>';
+  html+='<input id="settings-groq-key" type="password" placeholder="gsk_..." value="'+(localStorage.getItem("il_groq_key")||"")+'" style="margin-bottom:16px" onchange="localStorage.setItem(\'il_groq_key\',this.value)">';
   html+='<div class="lbl">Data</div>';
   html+='<button onclick="exportAllData()" style="width:100%;padding:9px;background:none;border:1px solid rgba(var(--acc-rgb),0.4);border-radius:7px;color:var(--acc);font-size:12px;font-weight:700;cursor:pointer">⬇ Export All Data (JSON)</button>';
   html+='<button onclick="clearHistoryOnly()" style="width:100%;margin-top:8px;padding:9px;background:none;border:1px solid rgba(248,113,113,0.4);border-radius:7px;color:#f87171;font-size:12px;font-weight:700;cursor:pointer">🗑 Clear Workout History</button>';
@@ -3139,6 +3403,7 @@ function renderSettingsContent(){
   document.getElementById("settings-content").innerHTML=html;
 }
 
+function toggleSmartAddHelp(){const el=document.getElementById("smartadd-help");if(el)el.classList.toggle("h");}
 function setBicep(idx){
   profiles[activeProfile].bicep=idx;
   save();
